@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.Guard of Knight.app"
+    namespace = "com.guardofknight.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.Guard of Knight.app"
+        applicationId = "com.guardofknight.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 2
