@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "com.knightmode.app"
+    namespace = "com.Guard of Knight.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.knightmode.app"
+        applicationId = "com.Guard of Knight.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     buildFeatures {
