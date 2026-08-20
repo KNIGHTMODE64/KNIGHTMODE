@@ -1,4 +1,4 @@
-package com.knightmode.app.feature.fakecall
+package com.guardofknight.app.feature.fakecall
 
 import android.app.KeyguardManager
 import android.content.Context
