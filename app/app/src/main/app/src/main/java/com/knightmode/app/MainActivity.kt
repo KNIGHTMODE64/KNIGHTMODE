@@ -1,4 +1,4 @@
-package com.knightmode.app
+package com.guardofknight.app
 
 import android.content.Intent
 import android.net.Uri
@@ -20,8 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.knightmode.app.feature.fakecall.FakeCallActivity
-import com.knightmode.app.service.FloatingEdgeService
+import com.guardofknight.app.feature.fakecall.FakeCallActivity
+import com.guardofknight.app.service.FloatingEdgeService
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,7 +82,7 @@ fun HomeScreen(onStartOverlay: () -> Unit, onTriggerDecoy: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "KnightMode",
+            text = "GuardOfKnight",
             fontSize = 28.sp,
             color = Color.White
         )
