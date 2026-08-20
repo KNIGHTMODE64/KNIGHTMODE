@@ -10,13 +10,13 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="KnightMode"
+        android:label="GuardOfKnight"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.guardofknight.app.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -25,14 +25,14 @@
         </activity>
 
         <activity
-            android:name=".feature.fakecall.FakeCallActivity"
+            android:name="com.guardofknight.app.feature.fakecall.FakeCallActivity"
             android:exported="false"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
 
         <service
-            android:name=".service.FloatingEdgeService"
+            android:name="com.guardofknight.app.service.FloatingEdgeService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse" />
