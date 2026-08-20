@@ -1,5 +1,6 @@
 package com.guardofknight.app
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -7,7 +8,6 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
@@ -65,6 +66,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HomeScreen(onStartOverlay: () -> Unit, onTriggerDecoy: () -> Unit) {
+    val context = LocalContext.current
+    val sharedPreferences = context.getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
+    
+    // Load saved name, default to empty string if nothing is saved yet
+    var callerName by remember { 
+        mutableStateOf(sharedPreferences.getString("caller_name", "") ?: "") 
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -87,15 +96,28 @@ fun HomeScreen(onStartOverlay: () -> Unit, onTriggerDecoy: () -> Unit) {
             color = Color.White
         )
         
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = "Active discreet personal safety companion",
-            fontSize = 14.sp,
-            color = Color(0xFF94A3B8)
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // New Input Field for Caller Name
+        OutlinedTextField(
+            value = callerName,
+            onValueChange = { newValue ->
+                callerName = newValue
+                // Save the new value immediately when the user types
+                sharedPreferences.edit().putString("caller_name", newValue).apply()
+            },
+            label = { Text("Fake Caller ID (Defaults to Mom)", color = Color(0xFF94A3B8)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedBorderColor = Color(0xFF38BDF8),
+                unfocusedBorderColor = Color(0xFF475569)
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
         
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         
         Button(
             onClick = onStartOverlay,
