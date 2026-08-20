@@ -1,4 +1,4 @@
-package com.knightmode.app.service
+package com.guardofknight.app.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -15,7 +15,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
 import androidx.core.app.NotificationCompat
-import com.knightmode.app.feature.fakecall.FakeCallActivity
+import com.guardofknight.app.feature.fakecall.FakeCallActivity
 
 class FloatingEdgeService : Service() {
 
@@ -31,11 +31,11 @@ class FloatingEdgeService : Service() {
     }
 
     private fun createNotification(): Notification {
-        val channelId = "knightmode_service"
+        val channelId = "guardofknight_service"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "KnightMode Guard",
+                "GuardOfKnight Guard",
                 NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
@@ -43,7 +43,7 @@ class FloatingEdgeService : Service() {
         }
 
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("KnightMode Active")
+            .setContentTitle("GuardOfKnight Active")
             .setContentText("Edge trigger is active on screen")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
