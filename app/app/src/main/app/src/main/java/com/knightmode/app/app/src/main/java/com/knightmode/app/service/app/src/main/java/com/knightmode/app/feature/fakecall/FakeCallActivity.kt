@@ -37,16 +37,18 @@ class FakeCallActivity : ComponentActivity() {
         turnScreenOnAndUnlock()
         startCallVibration()
 
+        // Read the custom name saved by the user
+        val sharedPreferences = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
+        val savedName = sharedPreferences.getString("caller_name", "")
+        
+        // If the user didn't type anything, use "Mom" as the fallback
+        val callerNameToDisplay = if (savedName.isNullOrBlank()) "Mom" else savedName
+
         setContent {
             DecoyIncomingCallScreen(
-                callerName = "Mom",
-                onAccept = {
-                    stopVibration()
-                },
-                onDecline = {
-                    stopVibration()
-                    finish()
-                }
+                callerName = callerNameToDisplay,
+                onAccept = { stopVibration() },
+                onDecline = { stopVibration(); finish() }
             )
         }
     }
