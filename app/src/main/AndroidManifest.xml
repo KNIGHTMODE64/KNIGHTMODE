@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permissions required for the floating edge service -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Permissions required for the floating button and fake call -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    
+    <!-- NEW: Permission required for the phone to vibrate -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
-        android:supportsRtl="true">
-        
-        <!-- Main Activity -->
+        android:icon="@mipmap/ic_launcher"
+        android:label="GuardOfKnight"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
+        <!-- Main App Screen -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -19,11 +26,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Fake Call Activity -->
-        <activity android:name=".feature.fakecall.FakeCallActivity" />
+        <!-- Fake Call Screen (Configured to wake up the screen) -->
+        <activity
+            android:name=".feature.fakecall.FakeCallActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true" />
 
-        <!-- Floating Edge Service -->
-        <service android:name=".service.FloatingEdgeService" />
+        <!-- Floating Button Background Service -->
+        <service
+            android:name=".service.FloatingEdgeService"
+            android:exported="false" />
 
     </application>
 </manifest>
