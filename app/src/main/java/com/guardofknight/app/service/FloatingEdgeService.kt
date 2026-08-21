@@ -10,7 +10,6 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
@@ -74,28 +73,12 @@ class FloatingEdgeService : Service() {
             setPadding(20, 20, 20, 20)
         }
 
-        imageView.setOnTouchListener(object : View.OnTouchListener {
-            private var lastAction = 0
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        lastAction = MotionEvent.ACTION_DOWN
-                        return true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        if (lastAction == MotionEvent.ACTION_DOWN) {
-                            val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                            }
-                            startActivity(callIntent)
-                        }
-                        return true
-                    }
-                }
-                return false
+        imageView.setOnClickListener {
+            val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
-        })
+            startActivity(callIntent)
+        }
 
         floatingView = imageView
         windowManager?.addView(floatingView, params)
