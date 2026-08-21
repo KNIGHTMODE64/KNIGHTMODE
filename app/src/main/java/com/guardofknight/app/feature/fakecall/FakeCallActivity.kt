@@ -2,6 +2,7 @@ package com.guardofknight.app.feature.fakecall
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
@@ -29,10 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
+import java.io.InputStream
 
 class FakeCallActivity : ComponentActivity() {
 
@@ -122,6 +124,7 @@ fun DecoyIncomingCallScreen(
     onDecline: () -> Unit
 ) {
     var callAccepted by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Column(
         modifier = Modifier
@@ -147,12 +150,22 @@ fun DecoyIncomingCallScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (callerImageUri.isNotBlank()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(Uri.parse(callerImageUri)),
-                        contentDescription = "Caller Photo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    try {
+                        val inputStream: InputStream? = context.contentResolver.openInputStream(Uri.parse(callerImageUri))
+                        val bitmap = BitmapFactory.decodeStream(inputStream)
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Caller Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(75.dp))
+                        }
+                    } catch (e: Exception) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(75.dp))
+                    }
                 } else {
                     Icon(
                         imageVector = Icons.Default.Person,
