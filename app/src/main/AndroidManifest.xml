@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permissions required for the floating button and fake call -->
+    <!-- Permissions required for the floating button, fake call, and vibration -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    
+    <!-- NEW: Android 14 requires explicit foreground service types -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
@@ -22,7 +25,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Fake Call Screen (Configured to wake up the screen) -->
+        <!-- Fake Call Screen -->
         <activity
             android:name=".feature.fakecall.FakeCallActivity"
             android:exported="false"
@@ -32,7 +35,14 @@
         <!-- Floating Button Background Service -->
         <service
             android:name=".service.FloatingEdgeService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            
+            <!-- Android 14 requires a property tag for specialUse -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating Edge Trigger" />
+        </service>
 
     </application>
 </manifest>
