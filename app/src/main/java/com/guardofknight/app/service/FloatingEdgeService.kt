@@ -75,7 +75,6 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // 1. Ultra-low visibility edge pull tab (blends smoothly into the screen bezel)
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(28, 200).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -83,11 +82,10 @@ class FloatingEdgeService : Service() {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(16f, 16f, 0f, 0f, 0f, 0f, 16f, 16f)
-                setColor(0x33888888.toInt()) // Very low visibility alpha tint
+                setColor(0x33888888.toInt()) 
             }
         }
 
-        // 2. The call icon that pops out when pulled
         val triggerIcon = ImageView(this).apply {
             layoutParams = FrameLayout.LayoutParams(120, 120).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -108,7 +106,7 @@ class FloatingEdgeService : Service() {
                 startActivity(callIntent)
 
                 visibility = View.GONE
-                triggerIcon.animate().translationX(0f).setDuration(200).start()
+                animate().translationX(0f).setDuration(200).start()
             }
         }
 
