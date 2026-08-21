@@ -2,11 +2,16 @@ package com.guardofknight.app
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -18,10 +23,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
 import com.guardofknight.app.service.FloatingEdgeService
+import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +40,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             var callerName by remember { 
                 mutableStateOf(sharedPrefs.getString("caller_name", "Mom") ?: "Mom") 
+            }
+            var callerImageUri by remember {
+                mutableStateOf(sharedPrefs.getString("caller_image", "") ?: "")
+            }
+
+            val imagePickerLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri: Uri? ->
+                uri?.let {
+                    // Take persistable permission if needed or save string URI directly
+                    callerImageUri = it.toString()
+                    sharedPrefs.edit().putString("caller_image", it.toString()).apply()
+                }
             }
 
             Surface(
@@ -49,8 +70,9 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = "Stealth Edge Trigger Controller", fontSize = 14.sp, color = Color(0xFF9CA3AF))
                     
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
 
+                    // Caller Photo Preview Box
                     Box(
                         modifier = Modifier
                             .size(110.dp)
@@ -58,15 +80,41 @@ class MainActivity : ComponentActivity() {
                             .background(Color(0xFF374151)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(60.dp)
-                        )
+                        if (callerImageUri.isNotBlank()) {
+                            try {
+                                val inputStream: InputStream? = contentResolver.openInputStream(Uri.parse(callerImageUri))
+                                val bitmap = BitmapFactory.decodeStream(inputStream)
+                                if (bitmap != null) {
+                                    Image(
+                                        bitmap = bitmap.asImageBitmap(),
+                                        contentDescription = "Caller Photo",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(60.dp)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Button(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF374151))
+                    ) {
+                        Text(text = "Choose Caller Photo", color = Color.White)
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     OutlinedTextField(
                         value = callerName,
@@ -116,7 +164,7 @@ class MainActivity : ComponentActivity() {
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                android.net.Uri.parse("package:$packageName")
+                Uri.parse("package:$packageName")
             )
             startActivity(intent)
         } else {
