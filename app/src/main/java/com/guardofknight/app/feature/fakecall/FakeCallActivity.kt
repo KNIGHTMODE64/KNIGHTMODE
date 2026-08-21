@@ -2,6 +2,8 @@ package com.guardofknight.app.feature.fakecall
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -30,12 +32,14 @@ import androidx.compose.ui.unit.sp
 class FakeCallActivity : ComponentActivity() {
 
     private var vibrator: Vibrator? = null
+    private var ringtone: Ringtone? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         turnScreenOnAndUnlock()
         startCallVibration()
+        startRingtone()
 
         // Read the custom name saved by the user
         val sharedPreferences = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
@@ -47,8 +51,15 @@ class FakeCallActivity : ComponentActivity() {
         setContent {
             DecoyIncomingCallScreen(
                 callerName = callerNameToDisplay,
-                onAccept = { stopVibration() },
-                onDecline = { stopVibration(); finish() }
+                onAccept = { 
+                    stopVibration()
+                    stopRingtone()
+                },
+                onDecline = { 
+                    stopVibration()
+                    stopRingtone()
+                    finish() 
+                }
             )
         }
     }
@@ -85,9 +96,24 @@ class FakeCallActivity : ComponentActivity() {
         vibrator?.cancel()
     }
 
+    private fun startRingtone() {
+        try {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            ringtone = RingtoneManager.getRingtone(applicationContext, uri)
+            ringtone?.play()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun stopRingtone() {
+        ringtone?.stop()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         stopVibration()
+        stopRingtone()
     }
 }
 
