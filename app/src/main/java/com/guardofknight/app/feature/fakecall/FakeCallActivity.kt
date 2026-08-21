@@ -4,6 +4,7 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -11,6 +12,7 @@ import android.os.Vibrator
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -25,9 +27,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 
 class FakeCallActivity : ComponentActivity() {
 
@@ -41,16 +46,14 @@ class FakeCallActivity : ComponentActivity() {
         startCallVibration()
         startRingtone()
 
-        // Read the custom name saved by the user
         val sharedPreferences = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
-        val savedName = sharedPreferences.getString("caller_name", "")
-        
-        // If the user didn't type anything, use "Mom" as the fallback
-        val callerNameToDisplay = if (savedName.isNullOrBlank()) "Mom" else savedName
+        val savedName = sharedPreferences.getString("caller_name", "Mom") ?: "Mom"
+        val savedImage = sharedPreferences.getString("caller_image", "") ?: ""
 
         setContent {
             DecoyIncomingCallScreen(
-                callerName = callerNameToDisplay,
+                callerName = savedName,
+                callerImageUri = savedImage,
                 onAccept = { 
                     stopVibration()
                     stopRingtone()
@@ -92,23 +95,17 @@ class FakeCallActivity : ComponentActivity() {
         }
     }
 
-    private fun stopVibration() {
-        vibrator?.cancel()
-    }
+    private fun stopVibration() { vibrator?.cancel() }
 
     private fun startRingtone() {
         try {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
             ringtone = RingtoneManager.getRingtone(applicationContext, uri)
             ringtone?.play()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun stopRingtone() {
-        ringtone?.stop()
-    }
+    private fun stopRingtone() { ringtone?.stop() }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -120,6 +117,7 @@ class FakeCallActivity : ComponentActivity() {
 @Composable
 fun DecoyIncomingCallScreen(
     callerName: String,
+    callerImageUri: String,
     onAccept: () -> Unit,
     onDecline: () -> Unit
 ) {
@@ -128,35 +126,48 @@ fun DecoyIncomingCallScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF111827))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF1E293B), Color(0xFF0F172A), Color(0xFF020617))
+                )
+            )
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(top = 48.dp)
+            modifier = Modifier.padding(top = 72.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(100.dp)
+                    .size(140.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF374151)),
+                    .background(Color(0xFF334155)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(60.dp)
-                )
+                if (callerImageUri.isNotBlank()) {
+                    Image(
+                        painter = rememberAsyncImagePainter(Uri.parse(callerImageUri)),
+                        contentDescription = "Caller Photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(75.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(text = callerName, color = Color.White, fontSize = 28.sp)
+            Spacer(modifier = Modifier.height(28.dp))
+            Text(text = callerName, color = Color.White, fontSize = 34.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = if (callAccepted) "00:15" else "Incoming Call...",
-                color = Color(0xFF9CA3AF),
+                text = if (callAccepted) "Connected 00:15" else "Incoming mobile call...",
+                color = Color(0xFF94A3B8),
                 fontSize = 16.sp
             )
         }
@@ -164,32 +175,58 @@ fun DecoyIncomingCallScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 32.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(bottom = 60.dp),
+            horizontalArrangement = Arrangement.SpaceAround
         ) {
             if (!callAccepted) {
-                IconButton(
-                    onClick = {
-                        callAccepted = true
-                        onAccept()
-                    },
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF16A34A))
-                ) {
-                    Icon(Icons.Default.Call, contentDescription = "Accept", tint = Color.White)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(
+                        onClick = {
+                            callAccepted = true
+                            onAccept()
+                        },
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(Color(0xFF4ADE80), Color(0xFF16A34A))
+                                )
+                            )
+                    ) {
+                        Icon(
+                            Icons.Default.Call, 
+                            contentDescription = "Accept", 
+                            tint = Color.White, 
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = "Accept", color = Color.White, fontSize = 14.sp)
                 }
             }
 
-            IconButton(
-                onClick = onDecline,
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFDC2626))
-            ) {
-                Icon(Icons.Default.CallEnd, contentDescription = "Decline", tint = Color.White)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(
+                    onClick = onDecline,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFFF87171), Color(0xFFDC2626))
+                            )
+                        )
+                ) {
+                    Icon(
+                        Icons.Default.CallEnd, 
+                        contentDescription = "Decline", 
+                        tint = Color.White, 
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(text = "Decline", color = Color.White, fontSize = 14.sp)
             }
         }
     }
