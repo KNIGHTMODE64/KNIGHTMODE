@@ -2,6 +2,7 @@ package com.guardofknight.app.feature.fakecall
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.Ringtone
 import android.media.RingtoneManager
@@ -126,6 +127,23 @@ fun DecoyIncomingCallScreen(
     var callAccepted by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    var loadedBitmap by remember(callerImageUri) {
+        mutableStateOf<Bitmap?>(null)
+    }
+
+    LaunchedEffect(callerImageUri) {
+        if (callerImageUri.isNotBlank()) {
+            try {
+                val inputStream: InputStream? = context.contentResolver.openInputStream(Uri.parse(callerImageUri))
+                loadedBitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                loadedBitmap = null
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -149,23 +167,14 @@ fun DecoyIncomingCallScreen(
                     .background(Color(0xFF334155)),
                 contentAlignment = Alignment.Center
             ) {
-                if (callerImageUri.isNotBlank()) {
-                    try {
-                        val inputStream: InputStream? = context.contentResolver.openInputStream(Uri.parse(callerImageUri))
-                        val bitmap = BitmapFactory.decodeStream(inputStream)
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = "Caller Photo",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(75.dp))
-                        }
-                    } catch (e: Exception) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(75.dp))
-                    }
+                val bitmap = loadedBitmap
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Caller Photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
                 } else {
                     Icon(
                         imageVector = Icons.Default.Person,
