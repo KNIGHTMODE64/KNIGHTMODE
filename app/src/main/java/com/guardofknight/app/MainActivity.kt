@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
+                android.net.Uri.parse("package:$packageName")
             )
             startActivity(intent)
         } else {
