@@ -18,13 +18,11 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.core.app.NotificationCompat
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
-import kotlin.math.abs
 
 class FloatingEdgeService : Service() {
 
     private var windowManager: WindowManager? = null
     private var floatingView: FrameLayout? = null
-    private var isExpanded = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -35,7 +33,7 @@ class FloatingEdgeService : Service() {
         } else {
             startForeground(101, createNotification())
         }
-        createFloatingHandle()
+        createEdgeHandle()
     }
 
     private fun createNotification(): Notification {
@@ -57,7 +55,7 @@ class FloatingEdgeService : Service() {
             .build()
     }
 
-    private fun createFloatingHandle() {
+    private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         val params = WindowManager.LayoutParams(
@@ -70,37 +68,37 @@ class FloatingEdgeService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 1000 
-            y = 500  
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            x = 0 
+            y = 0  
         }
 
         val container = FrameLayout(this)
 
-        // 1. The visible grey slide bar handle
+        // 1. Ultra-low visibility edge pull tab (blends smoothly into the screen bezel)
         val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(48, 260).apply {
-                gravity = Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(28, 200).apply {
+                gravity = Gravity.CENTER_VERTICAL or Gravity.END
             }
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadius = 24f
-                // Clear, visible grey color mixed into the screen
-                setColor(0xAA777777.toInt()) 
+                cornerRadii = floatArrayOf(16f, 16f, 0f, 0f, 0f, 0f, 16f, 16f)
+                setColor(0x33888888.toInt()) // Very low visibility alpha tint
             }
         }
 
-        // 2. The trigger button icon (appears when tapped)
+        // 2. The call icon that pops out when pulled
         val triggerIcon = ImageView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(130, 130).apply {
-                gravity = Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(120, 120).apply {
+                gravity = Gravity.CENTER_VERTICAL or Gravity.END
+                marginEnd = -120 
             }
             setImageResource(android.R.drawable.ic_menu_call)
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0xEE2563EB.toInt()) // Solid blue button
+                setColor(0xEE2563EB.toInt())
             }
-            setPadding(28, 28, 28, 28)
+            setPadding(24, 24, 24, 24)
             visibility = View.GONE
 
             setOnClickListener {
@@ -109,57 +107,47 @@ class FloatingEdgeService : Service() {
                 }
                 startActivity(callIntent)
 
-                // Hide the icon back to normal bar
                 visibility = View.GONE
-                edgeHandle.visibility = View.VISIBLE
-                isExpanded = false
+                triggerIcon.animate().translationX(0f).setDuration(200).start()
             }
         }
 
         container.addView(edgeHandle)
         container.addView(triggerIcon)
 
-        var initialX = 0
-        var initialY = 0
         var initialTouchX = 0f
-        var initialTouchY = 0f
-        var isDragging = false
+        var isPulled = false
 
         container.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x
-                    initialY = params.y
                     initialTouchX = event.rawX
-                    initialTouchY = event.rawY
-                    isDragging = false
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val deltaX = (event.rawX - initialTouchX).toInt()
-                    val deltaY = (event.rawY - initialTouchY).toInt()
-                    
-                    if (abs(deltaX) > 8 || abs(deltaY) > 8) {
-                        isDragging = true
+                    val deltaX = initialTouchX - event.rawX 
+                    if (deltaX > 30 && !isPulled) {
+                        isPulled = true
+                        triggerIcon.visibility = View.VISIBLE
+                        triggerIcon.animate().translationX(-100f).setDuration(150).start()
+                    } else if (deltaX < -30 && isPulled) {
+                        isPulled = false
+                        triggerIcon.animate().translationX(0f).setDuration(150).withEndAction {
+                            triggerIcon.visibility = View.GONE
+                        }.start()
                     }
-
-                    params.x = initialX + deltaX
-                    params.y = initialY + deltaY
-                    windowManager?.updateViewLayout(container, params)
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
-                        // Toggle between slide bar and call button on tap
-                        if (!isExpanded) {
-                            edgeHandle.visibility = View.GONE
-                            triggerIcon.visibility = View.VISIBLE
-                            isExpanded = true
-                        } else {
+                    if (!isPulled) {
+                        isPulled = true
+                        triggerIcon.visibility = View.VISIBLE
+                        triggerIcon.animate().translationX(-100f).setDuration(150).start()
+                    } else {
+                        isPulled = false
+                        triggerIcon.animate().translationX(0f).setDuration(150).withEndAction {
                             triggerIcon.visibility = View.GONE
-                            edgeHandle.visibility = View.VISIBLE
-                            isExpanded = false
-                        }
+                        }.start()
                     }
                     true
                 }
