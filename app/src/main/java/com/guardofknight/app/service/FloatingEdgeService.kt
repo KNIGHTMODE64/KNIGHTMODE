@@ -35,7 +35,7 @@ class FloatingEdgeService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "GuardOfKnight Guard",
+                "guardOfKnight Guard",
                 NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
@@ -43,7 +43,7 @@ class FloatingEdgeService : Service() {
         }
 
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("GuardOfKnight Active")
+            .setContentTitle("guardOfKnight Active")
             .setContentText("Edge trigger is active on screen")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
