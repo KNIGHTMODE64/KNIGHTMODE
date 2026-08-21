@@ -2,6 +2,7 @@ package com.guardofknight.app
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
@@ -45,11 +46,29 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(sharedPrefs.getString("caller_image", "") ?: "")
             }
 
+            var loadedBitmap by remember(callerImageUri) {
+                mutableStateOf<Bitmap?>(null)
+            }
+
+            LaunchedEffect(callerImageUri) {
+                if (callerImageUri.isNotBlank()) {
+                    try {
+                        val inputStream: InputStream? = contentResolver.openInputStream(Uri.parse(callerImageUri))
+                        loadedBitmap = BitmapFactory.decodeStream(inputStream)
+                        inputStream?.close()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        loadedBitmap = null
+                    }
+                } else {
+                    loadedBitmap = null
+                }
+            }
+
             val imagePickerLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.GetContent()
             ) { uri: Uri? ->
                 uri?.let {
-                    // Take persistable permission if needed or save string URI directly
                     callerImageUri = it.toString()
                     sharedPrefs.edit().putString("caller_image", it.toString()).apply()
                 }
@@ -80,21 +99,14 @@ class MainActivity : ComponentActivity() {
                             .background(Color(0xFF374151)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (callerImageUri.isNotBlank()) {
-                            try {
-                                val inputStream: InputStream? = contentResolver.openInputStream(Uri.parse(callerImageUri))
-                                val bitmap = BitmapFactory.decodeStream(inputStream)
-                                if (bitmap != null) {
-                                    Image(
-                                        bitmap = bitmap.asImageBitmap(),
-                                        contentDescription = "Caller Photo",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
+                        val bitmap = loadedBitmap
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Caller Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Person,
