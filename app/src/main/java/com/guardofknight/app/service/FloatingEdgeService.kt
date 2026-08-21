@@ -18,6 +18,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.core.app.NotificationCompat
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
+import kotlin.math.abs
 
 class FloatingEdgeService : Service() {
 
@@ -58,6 +59,7 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
+        // Anchor to top-start so we can precisely control vertical dragging along the edge
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -68,13 +70,14 @@ class FloatingEdgeService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.CENTER_VERTICAL or Gravity.END
-            x = 0 
-            y = 0  
+            gravity = Gravity.TOP or Gravity.END
+            x = 0 // Tucked flush against the right edge bezel
+            y = 400 // Starting vertical position midway down
         }
 
         val container = FrameLayout(this)
 
+        // 1. The vertical side edge bar (low-visibility, hugs the bezel)
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(28, 200).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -82,14 +85,15 @@ class FloatingEdgeService : Service() {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(16f, 16f, 0f, 0f, 0f, 0f, 16f, 16f)
-                setColor(0x33888888.toInt()) 
+                setColor(0x44888888.toInt()) // Stealthy semi-transparent grey
             }
         }
 
+        // 2. The call icon that pops out when tapped
         val triggerIcon = ImageView(this).apply {
             layoutParams = FrameLayout.LayoutParams(120, 120).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
-                marginEnd = -120 
+                marginEnd = 16
             }
             setImageResource(android.R.drawable.ic_menu_call)
             background = android.graphics.drawable.GradientDrawable().apply {
@@ -105,47 +109,50 @@ class FloatingEdgeService : Service() {
                 }
                 startActivity(callIntent)
 
+                // Hide back into the edge
                 visibility = View.GONE
-                animate().translationX(0f).setDuration(200).start()
+                edgeHandle.visibility = View.VISIBLE
             }
         }
 
         container.addView(edgeHandle)
         container.addView(triggerIcon)
 
-        var initialTouchX = 0f
-        var isPulled = false
+        var initialY = 0
+        var initialTouchY = 0f
+        var isDragging = false
 
+        // Allow dragging UP and DOWN strictly along the right edge bezel
         container.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialTouchX = event.rawX
+                    initialY = params.y
+                    initialTouchY = event.rawY
+                    isDragging = false
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val deltaX = initialTouchX - event.rawX 
-                    if (deltaX > 30 && !isPulled) {
-                        isPulled = true
-                        triggerIcon.visibility = View.VISIBLE
-                        triggerIcon.animate().translationX(-100f).setDuration(150).start()
-                    } else if (deltaX < -30 && isPulled) {
-                        isPulled = false
-                        triggerIcon.animate().translationX(0f).setDuration(150).withEndAction {
-                            triggerIcon.visibility = View.GONE
-                        }.start()
+                    val deltaY = (event.rawY - initialTouchY).toInt()
+
+                    if (abs(deltaY) > 8) {
+                        isDragging = true
                     }
+
+                    // Lock horizontal position (x = 0) so it stays on the edge, but allow moving y up and down
+                    params.y = initialY + deltaY
+                    windowManager?.updateViewLayout(container, params)
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isPulled) {
-                        isPulled = true
-                        triggerIcon.visibility = View.VISIBLE
-                        triggerIcon.animate().translationX(-100f).setDuration(150).start()
-                    } else {
-                        isPulled = false
-                        triggerIcon.animate().translationX(0f).setDuration(150).withEndAction {
+                    if (!isDragging) {
+                        // Tapping without dragging expands/collapses the call button right from that edge spot
+                        if (edgeHandle.visibility == View.VISIBLE) {
+                            edgeHandle.visibility = View.GONE
+                            triggerIcon.visibility = View.VISIBLE
+                        } else {
                             triggerIcon.visibility = View.GONE
-                        }.start()
+                            edgeHandle.visibility = View.VISIBLE
+                        }
                     }
                     true
                 }
