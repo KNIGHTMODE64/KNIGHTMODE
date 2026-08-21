@@ -2,28 +2,24 @@ package com.guardofknight.app
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
 import com.guardofknight.app.service.FloatingEdgeService
 
@@ -36,18 +32,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             var callerName by remember { 
                 mutableStateOf(sharedPrefs.getString("caller_name", "Mom") ?: "Mom") 
-            }
-            var callerImageUri by remember {
-                mutableStateOf(sharedPrefs.getString("caller_image", "") ?: "")
-            }
-
-            val imagePickerLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.GetContent()
-            ) { uri: Uri? ->
-                uri?.let {
-                    callerImageUri = it.toString()
-                    sharedPrefs.edit().putString("caller_image", it.toString()).apply()
-                }
             }
 
             Surface(
@@ -74,25 +58,15 @@ class MainActivity : ComponentActivity() {
                             .background(Color(0xFF374151)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (callerImageUri.isNotBlank()) {
-                            Image(
-                                painter = rememberAsyncImagePainter(callerImageUri),
-                                contentDescription = "Caller Photo",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Text(text = "No Photo", color = Color.LightGray, fontSize = 12.sp)
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(60.dp)
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedButton(onClick = { imagePickerLauncher.launch("image/*") }) {
-                        Text(text = "Choose Caller Photo", color = Color.White)
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     OutlinedTextField(
                         value = callerName,
