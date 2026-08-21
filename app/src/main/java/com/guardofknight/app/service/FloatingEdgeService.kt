@@ -59,7 +59,7 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // Anchor to top-start so we can precisely control vertical dragging along the edge
+        // Locked to the right edge, allowing vertical up/down dragging along the bezel
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -71,25 +71,25 @@ class FloatingEdgeService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = 0 // Tucked flush against the right edge bezel
-            y = 400 // Starting vertical position midway down
+            x = 0 
+            y = 400 
         }
 
         val container = FrameLayout(this)
 
-        // 1. The vertical side edge bar (low-visibility, hugs the bezel)
+        // 1. The edge handle bar (hugs the bezel)
         val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(28, 200).apply {
+            layoutParams = FrameLayout.LayoutParams(32, 200).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
             }
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(16f, 16f, 0f, 0f, 0f, 0f, 16f, 16f)
-                setColor(0x44888888.toInt()) // Stealthy semi-transparent grey
+                setColor(0x44888888.toInt()) 
             }
         }
 
-        // 2. The call icon that pops out when tapped
+        // 2. The call icon that slides OUT onto the screen when pulled
         val triggerIcon = ImageView(this).apply {
             layoutParams = FrameLayout.LayoutParams(120, 120).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -101,6 +101,7 @@ class FloatingEdgeService : Service() {
                 setColor(0xEE2563EB.toInt())
             }
             setPadding(24, 24, 24, 24)
+            translationX = 150f // Hidden off-screen to the right initially
             visibility = View.GONE
 
             setOnClickListener {
@@ -109,9 +110,11 @@ class FloatingEdgeService : Service() {
                 }
                 startActivity(callIntent)
 
-                // Hide back into the edge
-                visibility = View.GONE
-                edgeHandle.visibility = View.VISIBLE
+                // Tuck back away after triggering call
+                animate().translationX(150f).setDuration(200).withEndAction {
+                    visibility = View.GONE
+                    edgeHandle.visibility = View.VISIBLE
+                }.start()
             }
         }
 
@@ -119,39 +122,53 @@ class FloatingEdgeService : Service() {
         container.addView(triggerIcon)
 
         var initialY = 0
+        var initialTouchX = 0f
         var initialTouchY = 0f
         var isDragging = false
+        var isPulledOpen = false
 
-        // Allow dragging UP and DOWN strictly along the right edge bezel
         container.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialY = params.y
+                    initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    val deltaX = initialTouchX - event.rawX
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    if (abs(deltaY) > 8) {
+                    // If moving vertically, drag the bar UP or DOWN along the edge
+                    if (abs(deltaY) > 12 && !isPulledOpen) {
                         isDragging = true
+                        params.y = initialY + deltaY
+                        windowManager?.updateViewLayout(container, params)
+                    } 
+                    // If pulled horizontally inward from the right edge
+                    else if (deltaX > 35 && !isPulledOpen && !isDragging) {
+                        isPulledOpen = true
+                        edgeHandle.visibility = View.GONE
+                        triggerIcon.visibility = View.VISIBLE
+                        triggerIcon.animate().translationX(-30f).setDuration(150).start()
                     }
-
-                    // Lock horizontal position (x = 0) so it stays on the edge, but allow moving y up and down
-                    params.y = initialY + deltaY
-                    windowManager?.updateViewLayout(container, params)
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
-                        // Tapping without dragging expands/collapses the call button right from that edge spot
-                        if (edgeHandle.visibility == View.VISIBLE) {
+                    // If it wasn't dragged vertically, support a tap toggle to open/close
+                    if (!isDragging && abs(initialTouchX - event.rawX) < 15) {
+                        if (!isPulledOpen) {
+                            isPulledOpen = true
                             edgeHandle.visibility = View.GONE
                             triggerIcon.visibility = View.VISIBLE
+                            triggerIcon.animate().translationX(-30f).setDuration(150).start()
                         } else {
-                            triggerIcon.visibility = View.GONE
-                            edgeHandle.visibility = View.VISIBLE
+                            isPulledOpen = false
+                            triggerIcon.animate().translationX(150f).setDuration(150).withEndAction {
+                                triggerIcon.visibility = View.GONE
+                                edgeHandle.visibility = View.VISIBLE
+                            }.start()
                         }
                     }
                     true
