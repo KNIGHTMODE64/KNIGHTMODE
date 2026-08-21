@@ -91,7 +91,7 @@ fun HomeScreen(onStartOverlay: () -> Unit, onTriggerDecoy: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "GuardOfKnight",
+            text = "guardOfKnight",
             fontSize = 28.sp,
             color = Color.White
         )
