@@ -241,14 +241,12 @@ class FloatingEdgeService : Service() {
                     val deltaX = event.rawX - initialTouchX
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    // If panel is closed and user swipes inward quickly, open panel
                     if (!isLongPressActive && abs(deltaX) > 30 && panelBox.visibility == View.GONE) {
                         handler.removeCallbacks(longPressRunnable)
                         openPanel()
                         true
                     }
-                    // Handle dragging for vertical placement and smooth side-switching
-                    else if (isLongPressActive || isDragging || abs(deltaY) > 15 || abs(deltaX) > 15) {
+                    else if (isLongPressActive || isDragging || abs(deltaY) > 10 || abs(deltaX) > 10) {
                         if (!isDragging && isLongPressActive) {
                             isDragging = true
                         }
@@ -257,18 +255,20 @@ class FloatingEdgeService : Service() {
                         
                         val displayMetrics = resources.displayMetrics
                         val screenWidth = displayMetrics.widthPixels
-                        
                         val targetIsLeft = event.rawX < screenWidth / 2
+                        
                         if (targetIsLeft != isLeftSide) {
                             isLeftSide = targetIsLeft
                             params.gravity = if (isLeftSide) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
                             params.x = 0
                             updateSideLayout(isLeftSide)
-                            // Reset initial touch reference to prevent jumps when crossing the screen center
-                            initialTouchX = event.rawX
-                            initialY = params.y
                         }
                         
+                        // Continuously update reference baseline to avoid tracking jump bugs
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        initialY = params.y
+
                         windowManager?.updateViewLayout(container, params)
                     }
                     true
