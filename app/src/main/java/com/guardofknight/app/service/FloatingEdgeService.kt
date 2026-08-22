@@ -65,6 +65,7 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
+        // KEEP WINDOW WRAP CONTENT SO IT NEVER COVERS THE SCREEN OR BREAKS TOUCHES
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -82,16 +83,7 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // Full-screen transparent backdrop layer to catch outside taps and dismiss panel
-        val backdrop = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT
-            )
-            visibility = View.GONE
-            setBackgroundColor(0x00000000)
-        }
-
+        // Sleek Solid Black Panel Box (Like flagship phone edge panels)
         val panelBox = LinearLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(180, 240).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
@@ -101,25 +93,27 @@ class FloatingEdgeService : Service() {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(32f, 32f, 32f, 32f, 32f, 32f, 32f, 32f)
-                setColor(0xEB0F172A.toInt()) 
-                setStroke(2, 0x33FFFFFF) 
+                setColor(0xFF000000.toInt()) // Deep solid black background
+                setStroke(2, 0x44FFFFFF) // Premium subtle border outline
             }
-            elevation = 16f
+            elevation = 20f
             setPadding(16, 20, 16, 20)
             visibility = View.GONE
             alpha = 0f
-            scaleX = 0.85f
-            scaleY = 0.85f
+            scaleX = 0.8f
+            scaleY = 0.8f
         }
 
+        // Solid Black/Dark Edge Handle sitting flush on the bezel
         val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(24, 140).apply {
+            layoutParams = FrameLayout.LayoutParams(26, 150).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
             }
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(12f, 0f, 0f, 12f, 12f, 0f, 0f, 12f)
-                setColor(0x88FFFFFF.toInt()) 
+                setColor(0xFF1F2937.toInt()) // Sleek dark charcoal/black handle
+                setStroke(1, 0x55FFFFFF) // Subtle border edge
             }
         }
 
@@ -133,7 +127,7 @@ class FloatingEdgeService : Service() {
             }
             text = "Quick Call"
             textSize = 12f
-            setTextColor(0x99FFFFFF.toInt())
+            setTextColor(0xAAFFFFFF.toInt())
         }
 
         val triggerIcon = ImageView(this).apply {
@@ -152,49 +146,30 @@ class FloatingEdgeService : Service() {
         panelBox.addView(panelTitle)
         panelBox.addView(triggerIcon)
 
-        // Add views in correct layering order
-        container.addView(backdrop)
         container.addView(panelBox)
         container.addView(edgeHandle)
 
-        // Smooth Close Animation Function
         val closePanel: () -> Unit = {
             panelBox.animate()
                 .alpha(0f)
-                .scaleX(0.85f)
-                .scaleY(0.85f)
-                .setDuration(180)
+                .scaleX(0.8f)
+                .scaleY(0.8f)
+                .setDuration(150)
                 .withEndAction {
                     panelBox.visibility = View.GONE
-                    backdrop.visibility = View.GONE
                     edgeHandle.visibility = View.VISIBLE
-                    
-                    // Reset to not focusable so touches pass through screen normally again
-                    params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    windowManager?.updateViewLayout(container, params)
                 }.start()
         }
 
-        // Smooth Open Animation Function
         val openPanel: () -> Unit = {
             edgeHandle.visibility = View.GONE
-            backdrop.visibility = View.VISIBLE
             panelBox.visibility = View.VISIBLE
-            
-            // Expand window bounds temporarily so backdrop can catch outside taps across screen
-            params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-            windowManager?.updateViewLayout(container, params)
-
             panelBox.animate()
                 .alpha(1f)
                 .scaleX(1.0f)
                 .scaleY(1.0f)
-                .setDuration(200)
+                .setDuration(180)
                 .start()
-        }
-
-        backdrop.setOnClickListener {
-            closePanel()
         }
 
         triggerIcon.setOnClickListener {
@@ -227,11 +202,6 @@ class FloatingEdgeService : Service() {
                     isLongPressActive = false
                     
                     handler.postDelayed(longPressRunnable, 400)
-                    true
-                }
-                MotionEvent.ACTION_OUTSIDE -> {
-                    // Tapping anywhere outside the floating window collapses it
-                    closePanel()
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
