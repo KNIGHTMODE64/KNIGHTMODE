@@ -61,9 +61,8 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // Make the container wide enough to accommodate the revealed icon inside bounds
         params = WindowManager.LayoutParams(
-            160, // Fixed width large enough to hold handle + pulled icon
+            160, 
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -79,7 +78,7 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // 1. The call icon that slides OUT onto the screen when pulled
+        // Declare triggerIcon first so it's fully initialized
         val triggerIcon = ImageView(this).apply {
             layoutParams = FrameLayout.LayoutParams(120, 120).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
@@ -92,23 +91,9 @@ class FloatingEdgeService : Service() {
             }
             setPadding(24, 24, 24, 24)
             visibility = View.GONE
-
-            setOnClickListener {
-                val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                }
-                startActivity(callIntent)
-
-                // Tuck back away after triggering call
-                animate().alpha(0f).setDuration(150).withEndAction {
-                    visibility = View.GONE
-                    edgeHandle.visibility = View.VISIBLE
-                    alpha = 1f
-                }.start()
-            }
         }
 
-        // 2. The edge handle bar (hugs the bezel on the right)
+        // Declare edgeHandle next
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(32, 200).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -118,6 +103,19 @@ class FloatingEdgeService : Service() {
                 cornerRadii = floatArrayOf(16f, 16f, 0f, 0f, 0f, 0f, 16f, 16f)
                 setColor(0x44888888.toInt()) 
             }
+        }
+
+        triggerIcon.setOnClickListener {
+            val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            startActivity(callIntent)
+
+            triggerIcon.animate().alpha(0f).setDuration(150).withEndAction {
+                triggerIcon.visibility = View.GONE
+                edgeHandle.visibility = View.VISIBLE
+                triggerIcon.alpha = 1f
+            }.start()
         }
 
         container.addView(triggerIcon)
@@ -142,14 +140,11 @@ class FloatingEdgeService : Service() {
                     val deltaX = initialTouchX - event.rawX
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    // Vertical dragging along the screen bezel
                     if (abs(deltaY) > 12 && !isPulledOpen) {
                         isDragging = true
                         params.y = initialY + deltaY
                         windowManager?.updateViewLayout(container, params)
-                    } 
-                    // Horizontal pull inward from right edge
-                    else if (deltaX > 30 && !isPulledOpen && !isDragging) {
+                    } else if (deltaX > 30 && !isPulledOpen && !isDragging) {
                         isPulledOpen = true
                         edgeHandle.visibility = View.GONE
                         triggerIcon.visibility = View.VISIBLE
@@ -159,7 +154,6 @@ class FloatingEdgeService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    // Tap toggle or release check
                     if (!isDragging && abs(initialTouchX - event.rawX) < 15) {
                         if (!isPulledOpen) {
                             isPulledOpen = true
