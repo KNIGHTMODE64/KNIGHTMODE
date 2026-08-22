@@ -11,12 +11,15 @@ import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import androidx.core.app.NotificationCompat
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
 import kotlin.math.abs
@@ -62,7 +65,7 @@ class FloatingEdgeService : Service() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         params = WindowManager.LayoutParams(
-            160, 
+            220, // Wide enough to hold the panel box when open
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -78,124 +81,151 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // Backdrop view to catch outside clicks when pulled open
+        // Transparent backdrop to close the panel when clicking outside
         val backdrop = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
             visibility = View.GONE
-            setBackgroundColor(0x00000000) // Fully transparent
+            setBackgroundColor(0x00000000)
         }
 
-        val triggerIcon = ImageView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(120, 120).apply {
+        // The Panel Box that appears when opened
+        val panelBox = LinearLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(180, 300).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                marginStart = 10
+            }
+            orientation = LinearLayout.VERTICAL
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadii = floatArrayOf(24f, 0f, 0f, 24f, 24f, 0f, 0f, 24f)
+                setColor(0xDD111827.toInt()) // Sleek dark translucent box
+            }
+            elevation = 12f
+            setPadding(16, 24, 16, 24)
+            visibility = View.GONE
+            alpha = 0f
+        }
+
+        // Icon inside the Panel Box
+        val triggerIcon = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(120, 120).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
             }
             setImageResource(android.R.drawable.ic_menu_call)
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0xEE2563EB.toInt())
+                setColor(0xFF2563EB.toInt())
             }
             setPadding(24, 24, 24, 24)
-            visibility = View.GONE
         }
 
+        panelBox.addView(triggerIcon)
+
+        // The Edge Handle bar sitting on the bezel
         val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(32, 200).apply {
+            layoutParams = FrameLayout.LayoutParams(28, 160).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
             }
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(16f, 16f, 0f, 0f, 0f, 0f, 16f, 16f)
-                setColor(0x44888888.toInt()) 
+                cornerRadii = floatArrayOf(12f, 12f, 0f, 0f, 0f, 0f, 12f, 12f)
+                setColor(0x66FFFFFF.toInt()) 
             }
         }
 
-        // Function to close / collapse the bar back
-        val closeBar: () -> Unit = {
-            triggerIcon.animate().alpha(0f).setDuration(150).withEndAction {
-                triggerIcon.visibility = View.GONE
+        val closePanel: () -> Unit = {
+            panelBox.animate().alpha(0f).setDuration(150).withEndAction {
+                panelBox.visibility = View.GONE
                 backdrop.visibility = View.GONE
                 edgeHandle.visibility = View.VISIBLE
-                triggerIcon.alpha = 1f
                 
-                // Reset flags back to not focusable so touches pass through the whole screen again
                 params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 windowManager?.updateViewLayout(container, params)
             }.start()
         }
 
-        // Function to open / expand the bar
-        val openBar: () -> Unit = {
+        val openPanel: () -> Unit = {
             edgeHandle.visibility = View.GONE
             backdrop.visibility = View.VISIBLE
-            triggerIcon.visibility = View.VISIBLE
-            triggerIcon.alpha = 0f
-            triggerIcon.animate().alpha(1f).setDuration(150).start()
+            panelBox.visibility = View.VISIBLE
+            panelBox.alpha = 0f
+            panelBox.animate().alpha(1f).setDuration(150).start()
 
-            // Allow window to capture outside/fullscreen touches when open
-            params.flags = 0 // Remove FLAG_NOT_FOCUSABLE temporarily
+            params.flags = 0 // Allow touch outside to capture backdrop clicks
             windowManager?.updateViewLayout(container, params)
         }
 
-        backdrop.setOnClickListener {
-            closeBar()
-        }
+        backdrop.setOnClickListener { closePanel() }
 
         triggerIcon.setOnClickListener {
             val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
             startActivity(callIntent)
-            closeBar()
+            closePanel()
         }
 
         container.addView(backdrop)
-        container.addView(triggerIcon)
+        container.addView(panelBox)
         container.addView(edgeHandle)
 
         var initialY = 0
-        var initialTouchX = 0f
         var initialTouchY = 0f
         var isDragging = false
         var isPulledOpen = false
+        val handler = Handler(Looper.getMainLooper())
+        
+        // Long-press detection runnable for repositioning
+        var isLongPressReady = false
+        val longPressRunnable = Runnable {
+            isLongPressReady = true
+            // Vibrate or give lightweight feedback here if desired
+            edgeHandle.animate().scaleY(1.2f).scaleX(1.2f).setDuration(100).start()
+        }
 
         container.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialY = params.y
-                    initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
+                    isLongPressReady = false
+                    
+                    // Start timer for long press (hold to move)
+                    handler.postDelayed(longPressRunnable, 400)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val deltaX = initialTouchX - event.rawX
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    if (abs(deltaY) > 12 && !isPulledOpen) {
+                    // If long-pressed, let the user drag/reposition the handle anywhere vertically
+                    if (isLongPressedActive(isLongPressReady, deltaY)) {
                         isDragging = true
                         params.y = initialY + deltaY
                         windowManager?.updateViewLayout(container, params)
-                    } else if (deltaX > 30 && !isPulledOpen && !isDragging) {
+                    } 
+                    // Normal horizontal pull inward to open the box panel
+                    else if (!isPulledOpen && !isDragging && event.rawX < initialTouchX - 40) {
+                        handler.removeCallbacks(longPressRunnable)
                         isPulledOpen = true
-                        openBar()
+                        openPanel()
                     }
                     true
                 }
-                MotionEvent.ACTION_UP -> {
-                    if (!isDragging && abs(initialTouchX - event.rawX) < 15) {
-                        if (!isPulledOpen) {
-                            isPulledOpen = true
-                            openBar()
-                        } else {
-                            // If tapped again on itself, close it
-                            isPulledOpen = false
-                            closeBar()
-                        }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(longPressRunnable)
+                    edgeHandle.animate().scaleY(1.0f).scaleX(1.0f).setDuration(100).start()
+
+                    // If it was just a clean tap (not dragged or long-pressed), open/close panel
+                    if (!isDragging && !isLongPressReady && !isPulledOpen) {
+                        isPulledOpen = true
+                        openPanel()
+                    } else if (isDragging) {
+                        isDragging = false
                     }
+                    isLongPressReady = false
                     true
                 }
                 else -> false
@@ -206,12 +236,15 @@ class FloatingEdgeService : Service() {
         windowManager?.addView(floatingView, params)
     }
 
+    private fun isLongPressedActive(ready: Boolean, deltaY: Int): Boolean {
+        return ready || abs(deltaY) > 30
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         if (windowManager != null && floatingView != null) {
             val displayMetrics = resources.displayMetrics
             val screenHeight = displayMetrics.heightPixels
-            
             if (params.y > screenHeight - 200) {
                 params.y = screenHeight - 200
             }
