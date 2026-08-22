@@ -61,9 +61,9 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // Keep window layout compact so it never shifts or centers incorrectly
+        // Fixed width container window layout to prevent any centering or shifting bugs
         params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            220, 
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -79,7 +79,7 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // 1. Invisible touch catcher to dismiss panel on outside taps
+        // 1. Outside tap detector to dismiss panel cleanly
         val outsideDismissView = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -89,21 +89,21 @@ class FloatingEdgeService : Service() {
             setBackgroundColor(0x00000000)
         }
 
-        // 2. Premium Frosted Glass Panel Box (Aligned correctly to the edge)
+        // 2. Frosted Glass Panel Box anchored strictly to the right/left
         val panelBox = LinearLayout(this).apply {
-            layoutParams = FrameLayout.LayoutParams(180, 210).apply {
+            layoutParams = FrameLayout.LayoutParams(170, 200).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                marginEnd = 16
+                marginStart = 10
             }
             orientation = LinearLayout.VERTICAL
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(24f, 24f, 24f, 24f, 24f, 24f, 24f, 24f)
-                setColor(0xE61E293B.toInt()) // Modern semi-transparent dark frosted grey
-                setStroke(2, 0x55FFFFFF) // Subtle glowing outline border
+                setColor(0xE61E293B.toInt()) // Sleek translucent dark frosted slate
+                setStroke(2, 0x55FFFFFF) // Soft glowing outline border
             }
             elevation = 16f
-            setPadding(16, 14, 16, 14)
+            setPadding(12, 12, 12, 12)
             visibility = View.GONE
             alpha = 0f
             scaleX = 0.8f
@@ -118,7 +118,7 @@ class FloatingEdgeService : Service() {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(8f, 0f, 0f, 8f, 8f, 0f, 0f, 8f)
-                setColor(0xB3FFFFFF.toInt()) // Sleek semi-transparent accent bar
+                setColor(0xB3FFFFFF.toInt()) // Clean semi-transparent accent bar
             }
         }
 
@@ -128,15 +128,15 @@ class FloatingEdgeService : Service() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = 8
+                bottomMargin = 6
             }
             text = "Quick Actions"
-            textSize = 11f
+            textSize = 10f
             setTextColor(0xCCFFFFFF.toInt())
         }
 
         val triggerIcon = ImageView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(80, 80).apply {
+            layoutParams = LinearLayout.LayoutParams(75, 75).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
             setImageResource(android.R.drawable.ic_menu_call)
@@ -145,7 +145,7 @@ class FloatingEdgeService : Service() {
                 setColor(0xFF2563EB.toInt())
             }
             elevation = 4f
-            setPadding(16, 16, 16, 16)
+            setPadding(14, 14, 14, 14)
         }
 
         panelBox.addView(panelTitle)
@@ -229,3 +229,4 @@ class FloatingEdgeService : Service() {
         floatingView?.let { windowManager?.removeView(it) }
     }
 }
+
