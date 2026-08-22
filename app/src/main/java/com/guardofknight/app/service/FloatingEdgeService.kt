@@ -65,7 +65,6 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // Use fixed compact wrapping parameters to guarantee it stays locked to the bezel
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -83,7 +82,6 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // Invisible touch barrier to catch outside taps and close the panel instantly
         val outsideDismissView = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -93,7 +91,6 @@ class FloatingEdgeService : Service() {
             setBackgroundColor(0x00000000)
         }
 
-        // Action Panel Box (Anchored strictly next to the handle)
         val panelBox = LinearLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(160, 180).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -113,7 +110,6 @@ class FloatingEdgeService : Service() {
             scaleY = 0.8f
         }
 
-        // Original Slide Handle Style with slight size increase
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(30, 180).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -140,12 +136,10 @@ class FloatingEdgeService : Service() {
 
         panelBox.addView(triggerIcon)
 
-        // Helper function to update internal layouts when switching sides (Left vs Right)
         val updateSideLayout = { left: Boolean ->
             panelBox.removeAllViews()
             edgeHandle.visibility = View.GONE
             
-            // Re-order views so the handle sits against the outer bezel and the box opens inward
             if (left) {
                 panelBox.addView(triggerIcon)
                 container.removeAllViews()
@@ -247,15 +241,18 @@ class FloatingEdgeService : Service() {
                     val deltaX = event.rawX - initialTouchX
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    // Horizontal pull inward to open panel
+                    // If panel is closed and user swipes inward quickly, open panel
                     if (!isLongPressActive && abs(deltaX) > 30 && panelBox.visibility == View.GONE) {
                         handler.removeCallbacks(longPressRunnable)
                         openPanel()
                         true
                     }
-                    // Hold and drag to move vertically or switch sides seamlessly
-                    else if (isLongPressActive && (abs(deltaX) > 15 || abs(deltaY) > 15)) {
-                        isDragging = true
+                    // Handle dragging for vertical placement and smooth side-switching
+                    else if (isLongPressActive || isDragging || abs(deltaY) > 15 || abs(deltaX) > 15) {
+                        if (!isDragging && isLongPressActive) {
+                            isDragging = true
+                        }
+                        
                         params.y = initialY + deltaY
                         
                         val displayMetrics = resources.displayMetrics
@@ -267,6 +264,9 @@ class FloatingEdgeService : Service() {
                             params.gravity = if (isLeftSide) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
                             params.x = 0
                             updateSideLayout(isLeftSide)
+                            // Reset initial touch reference to prevent jumps when crossing the screen center
+                            initialTouchX = event.rawX
+                            initialY = params.y
                         }
                         
                         windowManager?.updateViewLayout(container, params)
@@ -277,7 +277,6 @@ class FloatingEdgeService : Service() {
                     handler.removeCallbacks(longPressRunnable)
                     edgeHandle.animate().scaleY(1.0f).scaleX(1.0f).setDuration(100).start()
 
-                    // Tap to toggle open/close if not dragging
                     if (!isDragging && !isLongPressActive && abs(event.rawX - initialTouchX) < 15 && abs(event.rawY - initialTouchY) < 15) {
                         if (panelBox.visibility == View.GONE) {
                             openPanel()
