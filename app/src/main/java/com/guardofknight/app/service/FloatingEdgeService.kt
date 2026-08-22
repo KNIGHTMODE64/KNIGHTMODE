@@ -79,7 +79,7 @@ class FloatingEdgeService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.END
             x = 0 
-            y = 600 // Initial safe height away from the camera cutout
+            y = 600 // Safe vertical starting point away from camera cutout
         }
 
         val container = FrameLayout(this)
@@ -253,21 +253,27 @@ class FloatingEdgeService : Service() {
                             isDragging = true
                         }
                         
-                        // Calculate target Y and clamp it so it never hits the camera/status bar (min 150px) or bottom edge
+                        // Vertical clamping bounds to protect against camera overlap and screen edges
                         val displayMetrics = resources.displayMetrics
                         val screenHeight = displayMetrics.heightPixels
                         val maxScrollY = screenHeight - 300
                         
                         params.y = max(150, min(initialY + deltaY, maxScrollY))
                         
+                        // Detect side transition based on absolute screen width midpoint
                         val screenWidth = displayMetrics.widthPixels
                         val targetIsLeft = event.rawX < screenWidth / 2
                         
                         if (targetIsLeft != isLeftSide) {
                             isLeftSide = targetIsLeft
                             params.gravity = if (isLeftSide) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
-                            params.x = 0
+                            params.x = 0 // Force lock directly to screen bezel edge
                             updateSideLayout(isLeftSide)
+                            
+                            // Re-anchor touch base points immediately on side swap
+                            initialTouchX = event.rawX
+                            initialTouchY = event.rawY
+                            initialY = params.y
                         }
                         
                         windowManager?.updateViewLayout(container, params)
@@ -314,3 +320,4 @@ class FloatingEdgeService : Service() {
         floatingView?.let { windowManager?.removeView(it) }
     }
 }
+        
