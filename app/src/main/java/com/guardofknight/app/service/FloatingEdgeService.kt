@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -24,6 +25,7 @@ class FloatingEdgeService : Service() {
 
     private var windowManager: WindowManager? = null
     private var floatingView: FrameLayout? = null
+    private lateinit var params: WindowManager.LayoutParams
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -60,7 +62,7 @@ class FloatingEdgeService : Service() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         // Locked to the right edge, allowing vertical up/down dragging along the bezel
-        val params = WindowManager.LayoutParams(
+        params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -179,6 +181,20 @@ class FloatingEdgeService : Service() {
 
         floatingView = container
         windowManager?.addView(floatingView, params)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (windowManager != null && floatingView != null) {
+            val displayMetrics = resources.displayMetrics
+            val screenHeight = displayMetrics.heightPixels
+            
+            // Ensure the Y position stays within bounds upon rotation
+            if (params.y > screenHeight - 200) {
+                params.y = screenHeight - 200
+            }
+            windowManager?.updateViewLayout(floatingView, params)
+        }
     }
 
     override fun onDestroy() {
