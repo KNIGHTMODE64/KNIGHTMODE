@@ -77,7 +77,7 @@ class FloatingEdgeService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.END
             x = 0 
-            y = 400 
+            y = 700 // Safe vertical offset starting lower down to avoid camera cutout area
         }
 
         val container = FrameLayout(this)
@@ -190,7 +190,7 @@ class FloatingEdgeService : Service() {
             outsideDismissView.visibility = View.VISIBLE
             panelBox.visibility = View.VISIBLE
             
-            params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
             windowManager?.updateViewLayout(container, params)
 
             panelBox.animate()
@@ -246,7 +246,7 @@ class FloatingEdgeService : Service() {
                         openPanel()
                         true
                     }
-                    else if (isLongPressActive || isDragging || abs(deltaY) > 10 || abs(deltaX) > 10) {
+                    else if (isLongPressActive || isDragging || abs(deltaY) > 8 || abs(deltaX) > 8) {
                         if (!isDragging && isLongPressActive) {
                             isDragging = true
                         }
@@ -264,11 +264,6 @@ class FloatingEdgeService : Service() {
                             updateSideLayout(isLeftSide)
                         }
                         
-                        // Continuously update reference baseline to avoid tracking jump bugs
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        initialY = params.y
-
                         windowManager?.updateViewLayout(container, params)
                     }
                     true
