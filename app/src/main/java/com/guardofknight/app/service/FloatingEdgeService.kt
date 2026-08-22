@@ -70,7 +70,7 @@ class FloatingEdgeService : Service() {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
                 WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, // Crucial: Allows touches to pass through normally
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, // Allows touches to pass through normally
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
@@ -80,7 +80,7 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // The Panel Box (Appears neatly next to the bezel when tapped)
+        // 1. Declare panelBox first
         val panelBox = LinearLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(160, 220).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
@@ -95,6 +95,18 @@ class FloatingEdgeService : Service() {
             elevation = 10f
             setPadding(12, 16, 12, 16)
             visibility = View.GONE
+        }
+
+        // 2. Declare edgeHandle next so it exists in scope
+        val edgeHandle = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(28, 150).apply {
+                gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            }
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadii = floatArrayOf(12f, 12f, 0f, 0f, 0f, 0f, 12f, 12f)
+                setColor(0x66FFFFFF.toInt()) 
+            }
         }
 
         val triggerIcon = ImageView(this).apply {
@@ -118,18 +130,6 @@ class FloatingEdgeService : Service() {
         }
 
         panelBox.addView(triggerIcon)
-
-        // The Edge Handle bar sitting safely on the bezel
-        val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(28, 150).apply {
-                gravity = Gravity.CENTER_VERTICAL or Gravity.END
-            }
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(12f, 12f, 0f, 0f, 0f, 0f, 12f, 12f)
-                setColor(0x66FFFFFF.toInt()) 
-            }
-        }
 
         container.addView(panelBox)
         container.addView(edgeHandle)
