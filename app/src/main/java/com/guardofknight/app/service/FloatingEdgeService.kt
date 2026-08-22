@@ -77,7 +77,7 @@ class FloatingEdgeService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.END
             x = 0 
-            y = 700 // Safe vertical offset starting lower down to avoid camera cutout area
+            y = 700 // Safe vertical offset starting away from top camera cutout
         }
 
         val container = FrameLayout(this)
@@ -262,6 +262,9 @@ class FloatingEdgeService : Service() {
                             params.gravity = if (isLeftSide) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
                             params.x = 0
                             updateSideLayout(isLeftSide)
+                            // Crucial: Reset touch anchor so coordinates don't glitch to screen center
+                            initialTouchX = event.rawX
+                            initialY = params.y
                         }
                         
                         windowManager?.updateViewLayout(container, params)
