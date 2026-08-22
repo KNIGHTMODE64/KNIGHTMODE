@@ -65,7 +65,6 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // KEEP WINDOW WRAP CONTENT SO IT NEVER COVERS THE SCREEN OR BREAKS TOUCHES
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -83,37 +82,36 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // Sleek Solid Black Panel Box (Like flagship phone edge panels)
+        // Sleek Translucent Frosted Glass Panel Box (Modern Dark Grey with Border)
         val panelBox = LinearLayout(this).apply {
-            layoutParams = FrameLayout.LayoutParams(180, 240).apply {
+            layoutParams = FrameLayout.LayoutParams(180, 220).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 marginEnd = 24
             }
             orientation = LinearLayout.VERTICAL
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(32f, 32f, 32f, 32f, 32f, 32f, 32f, 32f)
-                setColor(0xFF000000.toInt()) // Deep solid black background
-                setStroke(2, 0x44FFFFFF) // Premium subtle border outline
+                cornerRadii = floatArrayOf(28f, 28f, 28f, 28f, 28f, 28f, 28f, 28f)
+                setColor(0xCC1E293B.toInt()) // Modern translucent dark slate grey
+                setStroke(2, 0x44FFFFFF) // Soft glowing border outline
             }
-            elevation = 20f
-            setPadding(16, 20, 16, 20)
+            elevation = 16f
+            setPadding(16, 16, 16, 16)
             visibility = View.GONE
             alpha = 0f
-            scaleX = 0.8f
-            scaleY = 0.8f
+            scaleX = 0.85f
+            scaleY = 0.85f
         }
 
-        // Solid Black/Dark Edge Handle sitting flush on the bezel
+        // Clean Handle Bar on Bezel
         val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(26, 150).apply {
+            layoutParams = FrameLayout.LayoutParams(22, 130).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
             }
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(12f, 0f, 0f, 12f, 12f, 0f, 0f, 12f)
-                setColor(0xFF1F2937.toInt()) // Sleek dark charcoal/black handle
-                setStroke(1, 0x55FFFFFF) // Subtle border edge
+                cornerRadii = floatArrayOf(10f, 0f, 0f, 10f, 10f, 0f, 0f, 10f)
+                setColor(0x99FFFFFF.toInt()) // Clean semi-transparent white accent bar
             }
         }
 
@@ -123,15 +121,15 @@ class FloatingEdgeService : Service() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = 14
+                bottomMargin = 10
             }
-            text = "Quick Call"
-            textSize = 12f
-            setTextColor(0xAAFFFFFF.toInt())
+            text = "Quick Actions"
+            textSize = 11f
+            setTextColor(0xBBFFFFFF.toInt())
         }
 
         val triggerIcon = ImageView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(96, 96).apply {
+            layoutParams = LinearLayout.LayoutParams(85, 85).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
             setImageResource(android.R.drawable.ic_menu_call)
@@ -139,8 +137,8 @@ class FloatingEdgeService : Service() {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
                 setColor(0xFF2563EB.toInt())
             }
-            elevation = 6f
-            setPadding(22, 22, 22, 22)
+            elevation = 4f
+            setPadding(18, 18, 18, 18)
         }
 
         panelBox.addView(panelTitle)
@@ -150,20 +148,28 @@ class FloatingEdgeService : Service() {
         container.addView(edgeHandle)
 
         val closePanel: () -> Unit = {
-            panelBox.animate()
-                .alpha(0f)
-                .scaleX(0.8f)
-                .scaleY(0.8f)
-                .setDuration(150)
-                .withEndAction {
-                    panelBox.visibility = View.GONE
-                    edgeHandle.visibility = View.VISIBLE
-                }.start()
+            if (panelBox.visibility == View.VISIBLE) {
+                panelBox.animate()
+                    .alpha(0f)
+                    .scaleX(0.85f)
+                    .scaleY(0.85f)
+                    .setDuration(150)
+                    .withEndAction {
+                        panelBox.visibility = View.GONE
+                        edgeHandle.visibility = View.VISIBLE
+                        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        windowManager?.updateViewLayout(container, params)
+                    }.start()
+            }
         }
 
         val openPanel: () -> Unit = {
             edgeHandle.visibility = View.GONE
             panelBox.visibility = View.VISIBLE
+            // Temporarily allow focus so outside touches can be detected
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+            windowManager?.updateViewLayout(container, params)
+
             panelBox.animate()
                 .alpha(1f)
                 .scaleX(1.0f)
@@ -181,7 +187,6 @@ class FloatingEdgeService : Service() {
         }
 
         var initialY = 0
-        var initialTouchX = 0f
         var initialTouchY = 0f
         var isDragging = false
         val handler = Handler(Looper.getMainLooper())
@@ -196,19 +201,22 @@ class FloatingEdgeService : Service() {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialY = params.y
-                    initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
                     isLongPressActive = false
                     
-                    handler.postDelayed(longPressRunnable, 400)
+                    handler.postDelayed(longPressRunnable, 350)
+                    true
+                }
+                MotionEvent.ACTION_OUTSIDE -> {
+                    // Instantly closes when tapping anywhere outside the panel
+                    closePanel()
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val deltaX = (event.rawX - initialTouchX).toInt()
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    if (isLongPressActive && (abs(deltaX) > 15 || abs(deltaY) > 15)) {
+                    if (isLongPressActive && abs(deltaY) > 10) {
                         isDragging = true
                         params.y = initialY + deltaY
                         
@@ -251,6 +259,7 @@ class FloatingEdgeService : Service() {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        super.init { }
         super.onConfigurationChanged(newConfig)
         if (windowManager != null && floatingView != null) {
             val displayMetrics = resources.displayMetrics
