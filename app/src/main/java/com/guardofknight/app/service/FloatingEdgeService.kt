@@ -65,7 +65,7 @@ class FloatingEdgeService : Service() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         params = WindowManager.LayoutParams(
-            220, // Wide enough to hold the panel box when open
+            220, 
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -81,7 +81,6 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // Transparent backdrop to close the panel when clicking outside
         val backdrop = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -91,7 +90,6 @@ class FloatingEdgeService : Service() {
             setBackgroundColor(0x00000000)
         }
 
-        // The Panel Box that appears when opened
         val panelBox = LinearLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(180, 300).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
@@ -100,7 +98,7 @@ class FloatingEdgeService : Service() {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(24f, 0f, 0f, 24f, 24f, 0f, 0f, 24f)
-                setColor(0xDD111827.toInt()) // Sleek dark translucent box
+                setColor(0xDD111827.toInt()) 
             }
             elevation = 12f
             setPadding(16, 24, 16, 24)
@@ -108,7 +106,6 @@ class FloatingEdgeService : Service() {
             alpha = 0f
         }
 
-        // Icon inside the Panel Box
         val triggerIcon = ImageView(this).apply {
             layoutParams = LinearLayout.LayoutParams(120, 120).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
@@ -123,7 +120,6 @@ class FloatingEdgeService : Service() {
 
         panelBox.addView(triggerIcon)
 
-        // The Edge Handle bar sitting on the bezel
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(28, 160).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -153,7 +149,7 @@ class FloatingEdgeService : Service() {
             panelBox.alpha = 0f
             panelBox.animate().alpha(1f).setDuration(150).start()
 
-            params.flags = 0 // Allow touch outside to capture backdrop clicks
+            params.flags = 0 
             windowManager?.updateViewLayout(container, params)
         }
 
@@ -172,16 +168,15 @@ class FloatingEdgeService : Service() {
         container.addView(edgeHandle)
 
         var initialY = 0
+        var initialTouchX = 0f
         var initialTouchY = 0f
         var isDragging = false
         var isPulledOpen = false
         val handler = Handler(Looper.getMainLooper())
         
-        // Long-press detection runnable for repositioning
         var isLongPressReady = false
         val longPressRunnable = Runnable {
             isLongPressReady = true
-            // Vibrate or give lightweight feedback here if desired
             edgeHandle.animate().scaleY(1.2f).scaleX(1.2f).setDuration(100).start()
         }
 
@@ -189,24 +184,22 @@ class FloatingEdgeService : Service() {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialY = params.y
+                    initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
                     isLongPressReady = false
                     
-                    // Start timer for long press (hold to move)
                     handler.postDelayed(longPressRunnable, 400)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    // If long-pressed, let the user drag/reposition the handle anywhere vertically
                     if (isLongPressedActive(isLongPressReady, deltaY)) {
                         isDragging = true
                         params.y = initialY + deltaY
                         windowManager?.updateViewLayout(container, params)
                     } 
-                    // Normal horizontal pull inward to open the box panel
                     else if (!isPulledOpen && !isDragging && event.rawX < initialTouchX - 40) {
                         handler.removeCallbacks(longPressRunnable)
                         isPulledOpen = true
@@ -218,7 +211,6 @@ class FloatingEdgeService : Service() {
                     handler.removeCallbacks(longPressRunnable)
                     edgeHandle.animate().scaleY(1.0f).scaleX(1.0f).setDuration(100).start()
 
-                    // If it was just a clean tap (not dragged or long-pressed), open/close panel
                     if (!isDragging && !isLongPressReady && !isPulledOpen) {
                         isPulledOpen = true
                         openPanel()
