@@ -1,5 +1,6 @@
 package com.guardofknight.app
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -44,6 +45,10 @@ class MainActivity : ComponentActivity() {
             }
             var callerImageUri by remember {
                 mutableStateOf(sharedPrefs.getString("caller_image", "") ?: "")
+            }
+
+            var isServiceRunning by remember {
+                mutableStateOf(isMyServiceRunning(FloatingEdgeService::class.java))
             }
 
             var loadedBitmap by remember(callerImageUri) {
@@ -147,11 +152,25 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
-                        onClick = { startEdgeService() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                        onClick = { 
+                            if (isServiceRunning) {
+                                stopEdgeService()
+                                isServiceRunning = false
+                            } else {
+                                startEdgeService()
+                                isServiceRunning = isMyServiceRunning(FloatingEdgeService::class.java)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isServiceRunning) Color(0xFFDC2626) else Color(0xFF2563EB)
+                        ),
                         modifier = Modifier.fillMaxWidth().height(50.dp)
                     ) {
-                        Text(text = "Activate Edge Bar Service", color = Color.White, fontSize = 16.sp)
+                        Text(
+                            text = if (isServiceRunning) "Deactivate Edge Bar Service" else "Activate Edge Bar Service", 
+                            color = Color.White, 
+                            fontSize = 16.sp
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -187,5 +206,20 @@ class MainActivity : ComponentActivity() {
                 startService(serviceIntent)
             }
         }
+    }
+
+    private fun stopEdgeService() {
+        val serviceIntent = Intent(this, FloatingEdgeService::class.java)
+        stopService(serviceIntent)
+    }
+
+    private fun isMyServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
     }
 }
