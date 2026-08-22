@@ -12,7 +12,6 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -62,6 +61,7 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
+        // Keep window layout compact so it never shifts or centers incorrectly
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -79,7 +79,7 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // 1. Invisible touch catcher behind everything to close panel on outside taps
+        // 1. Invisible touch catcher to dismiss panel on outside taps
         val outsideDismissView = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -89,36 +89,36 @@ class FloatingEdgeService : Service() {
             setBackgroundColor(0x00000000)
         }
 
-        // 2. Frosted Glass Panel Box (Matches clean phone UI aesthetics)
+        // 2. Premium Frosted Glass Panel Box (Aligned correctly to the edge)
         val panelBox = LinearLayout(this).apply {
-            layoutParams = FrameLayout.LayoutParams(180, 220).apply {
+            layoutParams = FrameLayout.LayoutParams(180, 210).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                marginEnd = 24
+                marginEnd = 16
             }
             orientation = LinearLayout.VERTICAL
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(28f, 28f, 28f, 28f, 28f, 28f, 28f, 28f)
-                setColor(0xCC1E293B.toInt()) // Modern translucent dark slate grey
-                setStroke(2, 0x44FFFFFF) // Soft glowing border outline
+                cornerRadii = floatArrayOf(24f, 24f, 24f, 24f, 24f, 24f, 24f, 24f)
+                setColor(0xE61E293B.toInt()) // Modern semi-transparent dark frosted grey
+                setStroke(2, 0x55FFFFFF) // Subtle glowing outline border
             }
             elevation = 16f
-            setPadding(16, 16, 16, 16)
+            setPadding(16, 14, 16, 14)
             visibility = View.GONE
             alpha = 0f
-            scaleX = 0.85f
-            scaleY = 0.85f
+            scaleX = 0.8f
+            scaleY = 0.8f
         }
 
-        // 3. Clean Handle Bar sitting on the bezel
+        // 3. Clean Edge Handle Bar sitting flush on the bezel
         val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(22, 130).apply {
+            layoutParams = FrameLayout.LayoutParams(20, 120).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
             }
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(10f, 0f, 0f, 10f, 10f, 0f, 0f, 10f)
-                setColor(0x99FFFFFF.toInt()) 
+                cornerRadii = floatArrayOf(8f, 0f, 0f, 8f, 8f, 0f, 0f, 8f)
+                setColor(0xB3FFFFFF.toInt()) // Sleek semi-transparent accent bar
             }
         }
 
@@ -128,15 +128,15 @@ class FloatingEdgeService : Service() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = 10
+                bottomMargin = 8
             }
             text = "Quick Actions"
             textSize = 11f
-            setTextColor(0xBBFFFFFF.toInt())
+            setTextColor(0xCCFFFFFF.toInt())
         }
 
         val triggerIcon = ImageView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(85, 85).apply {
+            layoutParams = LinearLayout.LayoutParams(80, 80).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
             setImageResource(android.R.drawable.ic_menu_call)
@@ -145,7 +145,7 @@ class FloatingEdgeService : Service() {
                 setColor(0xFF2563EB.toInt())
             }
             elevation = 4f
-            setPadding(18, 18, 18, 18)
+            setPadding(16, 16, 16, 16)
         }
 
         panelBox.addView(panelTitle)
@@ -159,8 +159,8 @@ class FloatingEdgeService : Service() {
             if (panelBox.visibility == View.VISIBLE) {
                 panelBox.animate()
                     .alpha(0f)
-                    .scaleX(0.85f)
-                    .scaleY(0.85f)
+                    .scaleX(0.8f)
+                    .scaleY(0.8f)
                     .setDuration(150)
                     .withEndAction {
                         panelBox.visibility = View.GONE
@@ -200,7 +200,6 @@ class FloatingEdgeService : Service() {
             closePanel()
         }
 
-        // Dedicated touch listener solely for the edge handle to avoid interference
         edgeHandle.setOnClickListener {
             if (panelBox.visibility == View.GONE) {
                 openPanel()
