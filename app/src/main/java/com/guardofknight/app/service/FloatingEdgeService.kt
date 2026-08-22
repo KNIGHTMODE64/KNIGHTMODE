@@ -82,7 +82,16 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // 1. Declare panelBox first
+        // Full-screen transparent backdrop layer to catch outside taps and dismiss panel
+        val backdrop = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
+            visibility = View.GONE
+            setBackgroundColor(0x00000000)
+        }
+
         val panelBox = LinearLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(180, 240).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
@@ -92,15 +101,17 @@ class FloatingEdgeService : Service() {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(32f, 32f, 32f, 32f, 32f, 32f, 32f, 32f)
-                setColor(0xEB0F172A.toInt()) // Modern frosted slate-black look
-                setStroke(2, 0x33FFFFFF) // Subtle glowing outer border outline
+                setColor(0xEB0F172A.toInt()) 
+                setStroke(2, 0x33FFFFFF) 
             }
             elevation = 16f
             setPadding(16, 20, 16, 20)
             visibility = View.GONE
+            alpha = 0f
+            scaleX = 0.85f
+            scaleY = 0.85f
         }
 
-        // 2. Declare edgeHandle next so it exists in scope
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(24, 140).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -136,21 +147,63 @@ class FloatingEdgeService : Service() {
             }
             elevation = 6f
             setPadding(22, 22, 22, 22)
-            setOnClickListener {
-                val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                }
-                startActivity(callIntent)
-                panelBox.visibility = View.GONE
-                edgeHandle.visibility = View.VISIBLE
-            }
         }
 
         panelBox.addView(panelTitle)
         panelBox.addView(triggerIcon)
 
+        // Add views in correct layering order
+        container.addView(backdrop)
         container.addView(panelBox)
         container.addView(edgeHandle)
+
+        // Smooth Close Animation Function
+        val closePanel: () -> Unit = {
+            panelBox.animate()
+                .alpha(0f)
+                .scaleX(0.85f)
+                .scaleY(0.85f)
+                .setDuration(180)
+                .withEndAction {
+                    panelBox.visibility = View.GONE
+                    backdrop.visibility = View.GONE
+                    edgeHandle.visibility = View.VISIBLE
+                    
+                    // Reset to not focusable so touches pass through screen normally again
+                    params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    windowManager?.updateViewLayout(container, params)
+                }.start()
+        }
+
+        // Smooth Open Animation Function
+        val openPanel: () -> Unit = {
+            edgeHandle.visibility = View.GONE
+            backdrop.visibility = View.VISIBLE
+            panelBox.visibility = View.VISIBLE
+            
+            // Expand window bounds temporarily so backdrop can catch outside taps across screen
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+            windowManager?.updateViewLayout(container, params)
+
+            panelBox.animate()
+                .alpha(1f)
+                .scaleX(1.0f)
+                .scaleY(1.0f)
+                .setDuration(200)
+                .start()
+        }
+
+        backdrop.setOnClickListener {
+            closePanel()
+        }
+
+        triggerIcon.setOnClickListener {
+            val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            startActivity(callIntent)
+            closePanel()
+        }
 
         var initialY = 0
         var initialTouchX = 0f
@@ -173,8 +226,12 @@ class FloatingEdgeService : Service() {
                     isDragging = false
                     isLongPressActive = false
                     
-                    // Hold for 400ms to unlock repositioning / side-switching
                     handler.postDelayed(longPressRunnable, 400)
+                    true
+                }
+                MotionEvent.ACTION_OUTSIDE -> {
+                    // Tapping anywhere outside the floating window collapses it
+                    closePanel()
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -188,7 +245,6 @@ class FloatingEdgeService : Service() {
                         val displayMetrics = resources.displayMetrics
                         val screenWidth = displayMetrics.widthPixels
                         
-                        // Dynamically snap to left or right side based on drag position
                         if (event.rawX < screenWidth / 2) {
                             params.gravity = Gravity.TOP or Gravity.START
                             params.x = 0
@@ -207,11 +263,9 @@ class FloatingEdgeService : Service() {
 
                     if (!isDragging && !isLongPressActive) {
                         if (panelBox.visibility == View.GONE) {
-                            edgeHandle.visibility = View.GONE
-                            panelBox.visibility = View.VISIBLE
+                            openPanel()
                         } else {
-                            panelBox.visibility = View.GONE
-                            edgeHandle.visibility = View.VISIBLE
+                            closePanel()
                         }
                     }
                     isDragging = false
