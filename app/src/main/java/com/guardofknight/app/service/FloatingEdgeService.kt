@@ -23,6 +23,8 @@ import android.widget.LinearLayout
 import androidx.core.app.NotificationCompat
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 class FloatingEdgeService : Service() {
 
@@ -77,7 +79,7 @@ class FloatingEdgeService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.END
             x = 0 
-            y = 700 // Safe vertical offset starting away from top camera cutout
+            y = 600 // Initial safe height away from the camera cutout
         }
 
         val container = FrameLayout(this)
@@ -251,9 +253,13 @@ class FloatingEdgeService : Service() {
                             isDragging = true
                         }
                         
-                        params.y = initialY + deltaY
-                        
+                        // Calculate target Y and clamp it so it never hits the camera/status bar (min 150px) or bottom edge
                         val displayMetrics = resources.displayMetrics
+                        val screenHeight = displayMetrics.heightPixels
+                        val maxScrollY = screenHeight - 300
+                        
+                        params.y = max(150, min(initialY + deltaY, maxScrollY))
+                        
                         val screenWidth = displayMetrics.widthPixels
                         val targetIsLeft = event.rawX < screenWidth / 2
                         
@@ -262,9 +268,6 @@ class FloatingEdgeService : Service() {
                             params.gravity = if (isLeftSide) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
                             params.x = 0
                             updateSideLayout(isLeftSide)
-                            // Crucial: Reset touch anchor so coordinates don't glitch to screen center
-                            initialTouchX = event.rawX
-                            initialY = params.y
                         }
                         
                         windowManager?.updateViewLayout(container, params)
@@ -299,8 +302,8 @@ class FloatingEdgeService : Service() {
         if (windowManager != null && floatingView != null) {
             val displayMetrics = resources.displayMetrics
             val screenHeight = displayMetrics.heightPixels
-            if (params.y > screenHeight - 150) {
-                params.y = screenHeight - 150
+            if (params.y > screenHeight - 300) {
+                params.y = screenHeight - 300
             }
             windowManager?.updateViewLayout(floatingView!!, params)
         }
