@@ -61,9 +61,9 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // Locked to the right edge, allowing vertical up/down dragging along the bezel
+        // Make the container wide enough to accommodate the revealed icon inside bounds
         params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            160, // Fixed width large enough to hold handle + pulled icon
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -79,7 +79,36 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // 1. The edge handle bar (hugs the bezel)
+        // 1. The call icon that slides OUT onto the screen when pulled
+        val triggerIcon = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(120, 120).apply {
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                marginStart = 10
+            }
+            setImageResource(android.R.drawable.ic_menu_call)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(0xEE2563EB.toInt())
+            }
+            setPadding(24, 24, 24, 24)
+            visibility = View.GONE
+
+            setOnClickListener {
+                val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+                startActivity(callIntent)
+
+                // Tuck back away after triggering call
+                animate().alpha(0f).setDuration(150).withEndAction {
+                    visibility = View.GONE
+                    edgeHandle.visibility = View.VISIBLE
+                    alpha = 1f
+                }.start()
+            }
+        }
+
+        // 2. The edge handle bar (hugs the bezel on the right)
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(32, 200).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -91,37 +120,8 @@ class FloatingEdgeService : Service() {
             }
         }
 
-        // 2. The call icon that slides OUT onto the screen when pulled
-        val triggerIcon = ImageView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(120, 120).apply {
-                gravity = Gravity.CENTER_VERTICAL or Gravity.END
-                marginEnd = 16
-            }
-            setImageResource(android.R.drawable.ic_menu_call)
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.OVAL
-                setColor(0xEE2563EB.toInt())
-            }
-            setPadding(24, 24, 24, 24)
-            translationX = 150f // Hidden off-screen to the right initially
-            visibility = View.GONE
-
-            setOnClickListener {
-                val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                }
-                startActivity(callIntent)
-
-                // Tuck back away after triggering call
-                animate().translationX(150f).setDuration(200).withEndAction {
-                    visibility = View.GONE
-                    edgeHandle.visibility = View.VISIBLE
-                }.start()
-            }
-        }
-
-        container.addView(edgeHandle)
         container.addView(triggerIcon)
+        container.addView(edgeHandle)
 
         var initialY = 0
         var initialTouchX = 0f
@@ -142,34 +142,37 @@ class FloatingEdgeService : Service() {
                     val deltaX = initialTouchX - event.rawX
                     val deltaY = (event.rawY - initialTouchY).toInt()
 
-                    // If moving vertically, drag the bar UP or DOWN along the edge
+                    // Vertical dragging along the screen bezel
                     if (abs(deltaY) > 12 && !isPulledOpen) {
                         isDragging = true
                         params.y = initialY + deltaY
                         windowManager?.updateViewLayout(container, params)
                     } 
-                    // If pulled horizontally inward from the right edge
-                    else if (deltaX > 35 && !isPulledOpen && !isDragging) {
+                    // Horizontal pull inward from right edge
+                    else if (deltaX > 30 && !isPulledOpen && !isDragging) {
                         isPulledOpen = true
                         edgeHandle.visibility = View.GONE
                         triggerIcon.visibility = View.VISIBLE
-                        triggerIcon.animate().translationX(-30f).setDuration(150).start()
+                        triggerIcon.alpha = 0f
+                        triggerIcon.animate().alpha(1f).setDuration(150).start()
                     }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    // If it wasn't dragged vertically, support a tap toggle to open/close
+                    // Tap toggle or release check
                     if (!isDragging && abs(initialTouchX - event.rawX) < 15) {
                         if (!isPulledOpen) {
                             isPulledOpen = true
                             edgeHandle.visibility = View.GONE
                             triggerIcon.visibility = View.VISIBLE
-                            triggerIcon.animate().translationX(-30f).setDuration(150).start()
+                            triggerIcon.alpha = 0f
+                            triggerIcon.animate().alpha(1f).setDuration(150).start()
                         } else {
                             isPulledOpen = false
-                            triggerIcon.animate().translationX(150f).setDuration(150).withEndAction {
+                            triggerIcon.animate().alpha(0f).setDuration(150).withEndAction {
                                 triggerIcon.visibility = View.GONE
                                 edgeHandle.visibility = View.VISIBLE
+                                triggerIcon.alpha = 1f
                             }.start()
                         }
                     }
@@ -189,7 +192,6 @@ class FloatingEdgeService : Service() {
             val displayMetrics = resources.displayMetrics
             val screenHeight = displayMetrics.heightPixels
             
-            // Ensure the Y position stays within bounds upon rotation
             if (params.y > screenHeight - 200) {
                 params.y = screenHeight - 200
             }
