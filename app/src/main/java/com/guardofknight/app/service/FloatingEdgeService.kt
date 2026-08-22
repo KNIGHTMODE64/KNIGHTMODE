@@ -11,15 +11,18 @@ import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
+import kotlin.math.abs
 
 class FloatingEdgeService : Service() {
 
@@ -61,9 +64,8 @@ class FloatingEdgeService : Service() {
     private fun createEdgeHandle() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // Fixed width container window layout to prevent any centering or shifting bugs
         params = WindowManager.LayoutParams(
-            220, 
+            WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -79,7 +81,7 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // 1. Outside tap detector to dismiss panel cleanly
+        // Invisible touch catcher to dismiss panel on outside taps
         val outsideDismissView = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -89,54 +91,41 @@ class FloatingEdgeService : Service() {
             setBackgroundColor(0x00000000)
         }
 
-        // 2. Frosted Glass Panel Box anchored strictly to the right/left
+        // Action Panel Box
         val panelBox = LinearLayout(this).apply {
-            layoutParams = FrameLayout.LayoutParams(170, 200).apply {
+            layoutParams = FrameLayout.LayoutParams(160, 180).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                marginStart = 10
+                marginStart = 16
             }
             orientation = LinearLayout.VERTICAL
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                 cornerRadii = floatArrayOf(24f, 24f, 24f, 24f, 24f, 24f, 24f, 24f)
-                setColor(0xE61E293B.toInt()) // Sleek translucent dark frosted slate
-                setStroke(2, 0x55FFFFFF) // Soft glowing outline border
+                setColor(0xEE111827.toInt()) 
+                setStroke(2, 0x33FFFFFF) 
             }
-            elevation = 16f
-            setPadding(12, 12, 12, 12)
+            elevation = 12f
+            setPadding(12, 16, 12, 16)
             visibility = View.GONE
             alpha = 0f
             scaleX = 0.8f
             scaleY = 0.8f
         }
 
-        // 3. Clean Edge Handle Bar sitting flush on the bezel
+        // Original Slide Handle Style (slightly increased in size for better touch response)
         val edgeHandle = View(this).apply {
-            layoutParams = FrameLayout.LayoutParams(20, 120).apply {
+            layoutParams = FrameLayout.LayoutParams(30, 180).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
             }
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadii = floatArrayOf(8f, 0f, 0f, 8f, 8f, 0f, 0f, 8f)
-                setColor(0xB3FFFFFF.toInt()) // Clean semi-transparent accent bar
+                cornerRadii = floatArrayOf(14f, 0f, 0f, 14f, 14f, 0f, 0f, 14f)
+                setColor(0x55FFFFFF.toInt()) // Original translucent style color
             }
-        }
-
-        val panelTitle = TextView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.CENTER_HORIZONTAL
-                bottomMargin = 6
-            }
-            text = "Quick Actions"
-            textSize = 10f
-            setTextColor(0xCCFFFFFF.toInt())
         }
 
         val triggerIcon = ImageView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(75, 75).apply {
+            layoutParams = LinearLayout.LayoutParams(90, 90).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
             }
             setImageResource(android.R.drawable.ic_menu_call)
@@ -144,11 +133,10 @@ class FloatingEdgeService : Service() {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
                 setColor(0xFF2563EB.toInt())
             }
-            elevation = 4f
-            setPadding(14, 14, 14, 14)
+            elevation = 6f
+            setPadding(18, 18, 18, 18)
         }
 
-        panelBox.addView(panelTitle)
         panelBox.addView(triggerIcon)
 
         container.addView(outsideDismissView)
@@ -200,11 +188,78 @@ class FloatingEdgeService : Service() {
             closePanel()
         }
 
-        edgeHandle.setOnClickListener {
-            if (panelBox.visibility == View.GONE) {
-                openPanel()
-            } else {
-                closePanel()
+        var initialY = 0
+        var initialTouchX = 0f
+        var initialTouchY = 0f
+        var isDragging = false
+        val handler = Handler(Looper.getMainLooper())
+        
+        var isLongPressActive = false
+        val longPressRunnable = Runnable {
+            isLongPressActive = true
+            edgeHandle.animate().scaleY(1.25f).scaleX(1.25f).setDuration(100).start()
+        }
+
+        container.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialY = params.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    isDragging = false
+                    isLongPressActive = false
+                    
+                    // Hold for 350ms to unlock vertical dragging or side swapping
+                    handler.postDelayed(longPressRunnable, 350)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaX = event.rawX - initialTouchX
+                    val deltaY = (event.rawY - initialTouchY).toInt()
+
+                    // Pull or slide horizontally inward to open
+                    if (!isLongPressActive && abs(deltaX) > 35 && panelBox.visibility == View.GONE) {
+                        handler.removeCallbacks(longPressRunnable)
+                        openPanel()
+                        true
+                    }
+                    // Hold and drag to move up/down or switch sides
+                    else if (isLongPressActive && (abs(deltaX) > 15 || abs(deltaY) > 15)) {
+                        isDragging = true
+                        params.y = initialY + deltaY
+                        
+                        val displayMetrics = resources.displayMetrics
+                        val screenWidth = displayMetrics.widthPixels
+                        
+                        if (event.rawX < screenWidth / 2) {
+                            params.gravity = Gravity.TOP or Gravity.START
+                            params.x = 0
+                        } else {
+                            params.gravity = Gravity.TOP or Gravity.END
+                            params.x = 0
+                        }
+                        
+                        windowManager?.updateViewLayout(container, params)
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(longPressRunnable)
+                    edgeHandle.animate().scaleY(1.0f).scaleX(1.0f).setDuration(100).start()
+
+                    // Clean tap to toggle open/close if not dragging
+                    if (!isDragging && !isLongPressActive && abs(event.rawX - initialTouchX) < 15 && abs(event.rawY - initialTouchY) < 15) {
+                        if (panelBox.visibility == View.GONE) {
+                            openPanel()
+                        } else {
+                            closePanel()
+                        }
+                    }
+                    isDragging = false
+                    isLongPressActive = false
+                    true
+                }
+                else -> false
             }
         }
 
