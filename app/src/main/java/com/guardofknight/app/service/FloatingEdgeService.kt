@@ -284,4 +284,3 @@ class FloatingEdgeService : Service() {
         floatingView?.let { windowManager?.removeView(it) }
     }
 }
-
