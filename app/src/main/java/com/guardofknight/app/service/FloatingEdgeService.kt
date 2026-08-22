@@ -78,7 +78,16 @@ class FloatingEdgeService : Service() {
 
         val container = FrameLayout(this)
 
-        // Declare triggerIcon first so it's fully initialized
+        // Backdrop view to catch outside clicks when pulled open
+        val backdrop = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            visibility = View.GONE
+            setBackgroundColor(0x00000000) // Fully transparent
+        }
+
         val triggerIcon = ImageView(this).apply {
             layoutParams = FrameLayout.LayoutParams(120, 120).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
@@ -93,7 +102,6 @@ class FloatingEdgeService : Service() {
             visibility = View.GONE
         }
 
-        // Declare edgeHandle next
         val edgeHandle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(32, 200).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -105,19 +113,46 @@ class FloatingEdgeService : Service() {
             }
         }
 
+        // Function to close / collapse the bar back
+        val closeBar: () -> Unit = {
+            triggerIcon.animate().alpha(0f).setDuration(150).withEndAction {
+                triggerIcon.visibility = View.GONE
+                backdrop.visibility = View.GONE
+                edgeHandle.visibility = View.VISIBLE
+                triggerIcon.alpha = 1f
+                
+                // Reset flags back to not focusable so touches pass through the whole screen again
+                params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                windowManager?.updateViewLayout(container, params)
+            }.start()
+        }
+
+        // Function to open / expand the bar
+        val openBar: () -> Unit = {
+            edgeHandle.visibility = View.GONE
+            backdrop.visibility = View.VISIBLE
+            triggerIcon.visibility = View.VISIBLE
+            triggerIcon.alpha = 0f
+            triggerIcon.animate().alpha(1f).setDuration(150).start()
+
+            // Allow window to capture outside/fullscreen touches when open
+            params.flags = 0 // Remove FLAG_NOT_FOCUSABLE temporarily
+            windowManager?.updateViewLayout(container, params)
+        }
+
+        backdrop.setOnClickListener {
+            closeBar()
+        }
+
         triggerIcon.setOnClickListener {
             val callIntent = Intent(this@FloatingEdgeService, FakeCallActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
             startActivity(callIntent)
-
-            triggerIcon.animate().alpha(0f).setDuration(150).withEndAction {
-                triggerIcon.visibility = View.GONE
-                edgeHandle.visibility = View.VISIBLE
-                triggerIcon.alpha = 1f
-            }.start()
+            closeBar()
         }
 
+        container.addView(backdrop)
         container.addView(triggerIcon)
         container.addView(edgeHandle)
 
@@ -146,10 +181,7 @@ class FloatingEdgeService : Service() {
                         windowManager?.updateViewLayout(container, params)
                     } else if (deltaX > 30 && !isPulledOpen && !isDragging) {
                         isPulledOpen = true
-                        edgeHandle.visibility = View.GONE
-                        triggerIcon.visibility = View.VISIBLE
-                        triggerIcon.alpha = 0f
-                        triggerIcon.animate().alpha(1f).setDuration(150).start()
+                        openBar()
                     }
                     true
                 }
@@ -157,17 +189,11 @@ class FloatingEdgeService : Service() {
                     if (!isDragging && abs(initialTouchX - event.rawX) < 15) {
                         if (!isPulledOpen) {
                             isPulledOpen = true
-                            edgeHandle.visibility = View.GONE
-                            triggerIcon.visibility = View.VISIBLE
-                            triggerIcon.alpha = 0f
-                            triggerIcon.animate().alpha(1f).setDuration(150).start()
+                            openBar()
                         } else {
+                            // If tapped again on itself, close it
                             isPulledOpen = false
-                            triggerIcon.animate().alpha(0f).setDuration(150).withEndAction {
-                                triggerIcon.visibility = View.GONE
-                                edgeHandle.visibility = View.VISIBLE
-                                triggerIcon.alpha = 1f
-                            }.start()
+                            closeBar()
                         }
                     }
                     true
