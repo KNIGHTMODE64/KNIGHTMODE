@@ -1,14 +1,19 @@
 package com.guardofknight.app
 
 import android.app.ActivityManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.WindowManager
+import android.webkit.CookieManager
+import android.webkit.WebStorage
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -34,8 +39,24 @@ import com.guardofknight.app.service.FloatingEdgeService
 import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
+
+    // Receiver to listen for the power button (screen off) panic trigger
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_SCREEN_OFF) {
+                triggerPanicPurge()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Block screenshots and recent apps window previews
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
 
         val sharedPrefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
 
@@ -189,6 +210,40 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Register the screen-off listener dynamically
+        registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
+    }
+
+    override fun onPause() {
+        super.onPause()
+        try {
+            unregisterReceiver(screenOffReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Already unregistered
+        }
+    }
+
+    private fun triggerPanicPurge() {
+        // Clear caches, cookies, and sensitive local info
+        try {
+            WebStorage.getInstance().deleteAllData()
+            val cookieManager = CookieManager.getInstance()
+            cookieManager.removeAllCookies(null)
+            cookieManager.flush()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Launch the decoy interface and clear task stack
+        val intent = Intent(this, DecoyActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
     }
 
     private fun startEdgeService() {
