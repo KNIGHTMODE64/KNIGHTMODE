@@ -32,6 +32,11 @@
             android:showOnLockScreen="true"
             android:turnScreenOn="true" />
 
+        <!-- NEW: Decoy Notes/Utility Screen for Panic Purge -->
+        <activity
+            android:name=".DecoyActivity"
+            android:exported="false" />
+
         <!-- Floating Button Background Service -->
         <service
             android:name=".service.FloatingEdgeService"
