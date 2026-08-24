@@ -12,8 +12,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
-import android.webkit.CookieManager
-import android.webkit.WebStorage
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -52,13 +50,24 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Block screenshots and recent apps window previews
+        val sharedPrefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
+        
+        // Check if Decoy Stealth Disguise mode is turned ON
+        val isDecoyEnabled = sharedPrefs.getBoolean("decoy_mode_enabled", false)
+        if (isDecoyEnabled) {
+            val intent = Intent(this, DecoyActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+            finish()
+            return
+        }
+
+        // Block screenshots and recent apps window previews for security
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
-
-        val sharedPrefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
 
         setContent {
             var callerName by remember { 
@@ -66,6 +75,9 @@ class MainActivity : ComponentActivity() {
             }
             var callerImageUri by remember {
                 mutableStateOf(sharedPrefs.getString("caller_image", "") ?: "")
+            }
+            var isDecoyModeEnabled by remember {
+                mutableStateOf(sharedPrefs.getBoolean("decoy_mode_enabled", false))
             }
 
             var isServiceRunning by remember {
@@ -170,6 +182,24 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Decoy Disguise Mode Switch Toggle Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Enable Decoy Disguise", color = Color.White, fontSize = 16.sp)
+                        Switch(
+                            checked = isDecoyModeEnabled,
+                            onCheckedChange = { enabled ->
+                                isDecoyModeEnabled = enabled
+                                sharedPrefs.edit().putBoolean("decoy_mode_enabled", enabled).apply()
+                            }
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
@@ -228,17 +258,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun triggerPanicPurge() {
-        // Clear caches, cookies, and sensitive local info
-        try {
-            WebStorage.getInstance().deleteAllData()
-            val cookieManager = CookieManager.getInstance()
-            cookieManager.removeAllCookies(null)
-            cookieManager.flush()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        // Launch the decoy interface and clear task stack
+        // Launch the decoy interface and clear task stack instantly on power button press
         val intent = Intent(this, DecoyActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
