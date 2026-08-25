@@ -14,7 +14,6 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
 import com.guardofknight.app.DecoyActivity
-import com.guardofknight.app.DiscoFlashHelper
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
 
 class FloatingEdgeService : Service() {
@@ -107,24 +106,8 @@ class FloatingEdgeService : Service() {
                             serviceContext.startActivity(intent)
                         }
                     }
-                    addView(callBtn, LinearLayout.LayoutParams(100, 100).apply { setMargins(0, 0, 0, 16) })
+                    addView(callBtn, LinearLayout.LayoutParams(100, 100))
                 }
-
-                // Disco Flashlight Option Button
-                val discoBtn = ImageView(serviceContext).apply {
-                    setImageResource(android.R.drawable.ic_menu_compass)
-                    setColorFilter(Color.WHITE)
-                    setPadding(10, 10, 10, 10)
-                    setOnClickListener {
-                        closeSlideMenu()
-                        if (DiscoFlashHelper.isRunning()) {
-                            DiscoFlashHelper.stopDisco(serviceContext)
-                        } else {
-                            DiscoFlashHelper.startDisco(serviceContext, speedMillis = 100L)
-                        }
-                    }
-                }
-                addView(discoBtn, LinearLayout.LayoutParams(100, 100))
             }
 
             val menuParams = WindowManager.LayoutParams(
@@ -252,7 +235,6 @@ class FloatingEdgeService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         try {
-            DiscoFlashHelper.stopDisco(this)
             if (::edgeTriggerBar.isInitialized) windowManager.removeView(edgeTriggerBar)
             slideMenuView?.let { windowManager.removeView(it) }
             floatingDecoyIcon?.let { windowManager.removeView(it) }
