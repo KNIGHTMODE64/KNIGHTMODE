@@ -14,6 +14,7 @@ import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
 import com.guardofknight.app.DecoyActivity
+import com.guardofknight.app.DiscoFlashHelper
 import com.guardofknight.app.feature.fakecall.FakeCallActivity
 
 class FloatingEdgeService : Service() {
@@ -50,7 +51,7 @@ class FloatingEdgeService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.CENTER_VERTICAL or Gravity.`END`
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
             x = 0
             y = 0
         }
@@ -64,20 +65,11 @@ class FloatingEdgeService : Service() {
 
     private fun toggleSlideMenu(layoutFlag: Int) {
         if (isMenuVisible) {
-            // Close menu if already open
-            slideMenuView?.let {
-                try {
-                    windowManager.removeView(it)
-                } catch (e: Exception) {
-                }
-            }
-            slideMenuView = null
-            isMenuVisible = false
+            closeSlideMenu()
         } else {
-            // Check settings from SharedPreferences
+            val serviceContext = this
             val prefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
             val isDecoyEnabled = prefs.getBoolean("decoy_mode_enabled", true)
-            // You can also add a fake call preference toggle key if desired, defaulting to true here
             val isFakeCallEnabled = prefs.getBoolean("fake_call_service_enabled", true)
 
             // Create Slide Menu Panel
@@ -89,35 +81,50 @@ class FloatingEdgeService : Service() {
 
                 // Decoy Option Button (if enabled)
                 if (isDecoyEnabled) {
-                    val decoyBtn = ImageView(context).apply {
-                        setImageResource(android.R.drawable.ic_menu_edit) // Edit/Notes icon for Decoy
+                    val decoyBtn = ImageView(serviceContext).apply {
+                        setImageResource(android.R.drawable.ic_menu_edit)
                         setColorFilter(Color.WHITE)
                         setPadding(10, 10, 10, 10)
                         setOnClickListener {
-                            // Close menu and spawn the movable floating decoy icon onto the screen
                             closeSlideMenu()
                             spawnMovableDecoyIcon(layoutFlag)
                         }
                     }
-                    addView(decoyBtn, LinearLayout.LayoutParams(100, 100).apply { setMargins(0, 0, 0, 20) })
+                    addView(decoyBtn, LinearLayout.LayoutParams(100, 100).apply { setMargins(0, 0, 0, 16) })
                 }
 
                 // Fake Call Option Button (if enabled)
                 if (isFakeCallEnabled) {
-                    val callBtn = ImageView(context).apply {
-                        setImageResource(android.R.drawable.ic_menu_call) // Call icon for Fake Call
+                    val callBtn = ImageView(serviceContext).apply {
+                        setImageResource(android.R.drawable.ic_menu_call)
                         setColorFilter(Color.WHITE)
                         setPadding(10, 10, 10, 10)
                         setOnClickListener {
                             closeSlideMenu()
-                            val intent = Intent(context, FakeCallActivity::class.java).apply {
+                            val intent = Intent(serviceContext, FakeCallActivity::class.java).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             }
-                            context.startActivity(intent)
+                            serviceContext.startActivity(intent)
                         }
                     }
-                    addView(callBtn, LinearLayout.LayoutParams(100, 100))
+                    addView(callBtn, LinearLayout.LayoutParams(100, 100).apply { setMargins(0, 0, 0, 16) })
                 }
+
+                // Disco Flashlight Option Button
+                val discoBtn = ImageView(serviceContext).apply {
+                    setImageResource(android.R.drawable.ic_menu_compass)
+                    setColorFilter(Color.WHITE)
+                    setPadding(10, 10, 10, 10)
+                    setOnClickListener {
+                        closeSlideMenu()
+                        if (DiscoFlashHelper.isRunning()) {
+                            DiscoFlashHelper.stopDisco(serviceContext)
+                        } else {
+                            DiscoFlashHelper.startDisco(serviceContext, speedMillis = 100L)
+                        }
+                    }
+                }
+                addView(discoBtn, LinearLayout.LayoutParams(100, 100))
             }
 
             val menuParams = WindowManager.LayoutParams(
@@ -127,7 +134,7 @@ class FloatingEdgeService : Service() {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
             ).apply {
-                gravity = Gravity.CENTER_VERTICAL or Gravity.`END`
+                gravity = Gravity.CENTER_VERTICAL or Gravity.END
                 x = 40
                 y = 0
             }
@@ -154,16 +161,15 @@ class FloatingEdgeService : Service() {
     }
 
     private fun spawnMovableDecoyIcon(layoutFlag: Int) {
-        // If already on screen, don't spawn duplicate
         if (floatingDecoyIcon != null) return
+        val serviceContext = this
 
         val iconView = LinearLayout(this).apply {
-            // Transparent background look that the user can place anywhere
-            setBackgroundColor(Color.parseColor("#882563EB")) 
+            setBackgroundColor(Color.parseColor("#882563EB"))
             setPadding(20, 20, 20, 20)
             gravity = Gravity.CENTER
 
-            val innerIcon = ImageView(context).apply {
+            val innerIcon = ImageView(serviceContext).apply {
                 setImageResource(android.R.drawable.ic_menu_edit)
                 setColorFilter(Color.WHITE)
             }
@@ -173,7 +179,6 @@ class FloatingEdgeService : Service() {
         val iconParams = WindowManager.LayoutParams(
             120, 120,
             layoutFlag,
-            // FLAG_NOT_FOCUSABLE allows interaction, but we handle touch manually for dragging
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
@@ -182,7 +187,6 @@ class FloatingEdgeService : Service() {
             y = 500
         }
 
-        // Add touch listener to make the icon freely movable and support long-press to hide
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -219,17 +223,15 @@ class FloatingEdgeService : Service() {
             }
         })
 
-        // Tap normally to trigger Decoy Activity
         iconView.setOnClickListener {
             if (!isMoved) {
-                val intent = Intent(context, DecoyActivity::class.java).apply {
+                val intent = Intent(serviceContext, DecoyActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
-                context.startActivity(intent)
+                serviceContext.startActivity(intent)
             }
         }
 
-        // Long press to hide the decoy icon back into the slide tray
         iconView.setOnLongClickListener {
             try {
                 windowManager.removeView(iconView)
@@ -250,6 +252,7 @@ class FloatingEdgeService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         try {
+            DiscoFlashHelper.stopDisco(this)
             if (::edgeTriggerBar.isInitialized) windowManager.removeView(edgeTriggerBar)
             slideMenuView?.let { windowManager.removeView(it) }
             floatingDecoyIcon?.let { windowManager.removeView(it) }
