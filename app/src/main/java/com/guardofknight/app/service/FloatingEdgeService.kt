@@ -7,10 +7,8 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.ImageView
 import android.widget.LinearLayout
 import com.guardofknight.app.DecoyActivity
 
@@ -75,7 +73,7 @@ class FloatingEdgeService : Service() {
             floatingPanicIcon = null
             isIconVisible = false
         } else {
-            // If the icon is hidden, tapping the edge bar PLACES THE ICON OUTSIDE on the screen
+            // If hidden, tapping the edge bar PLACES THE ICON OUTSIDE near the middle-right area (away from camera)
             val iconView = LinearLayout(this).apply {
                 setBackgroundColor(Color.parseColor("#CC2563EB")) // Blue panic button style
                 setPadding(20, 20, 20, 20)
@@ -90,16 +88,17 @@ class FloatingEdgeService : Service() {
             }
 
             val iconParams = WindowManager.LayoutParams(
-                120, // Size of the floating icon
-                120,
+                130, // Comfortable size of the floating icon
+                130,
                 layoutFlag,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
             ).apply {
-                gravity = Gravity.TOP or Gravity.START
-                x = 200 // Position where it appears on screen
-                y = 400
+                // Positioned cleanly on the middle-right area, offset away from the edge bar and top camera
+                gravity = Gravity.CENTER_VERTICAL or Gravity.END
+                x = 180 // Pushes it inward from the right edge so it's easy to tap
+                y = 0   // Perfectly centered vertically
             }
 
             try {
