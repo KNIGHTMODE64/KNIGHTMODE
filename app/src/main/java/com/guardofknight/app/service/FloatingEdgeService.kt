@@ -37,20 +37,17 @@ class FloatingEdgeService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // 1. Sleek, refined Edge Handle on the right side
+        // Edge handle anchored on the right side
         edgeTriggerBar = View(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                setColor(Color.parseColor("#803B82F6")) // Semi-transparent vibrant blue tab
+                setColor(Color.parseColor("#993B82F6"))
                 cornerRadius = 12f
-            }
-            setOnClickListener {
-                toggleSlideMenu(layoutFlag)
             }
         }
 
         val edgeParams = WindowManager.LayoutParams(
-            35, 200,
+            35, 220,
             layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
@@ -58,6 +55,37 @@ class FloatingEdgeService : Service() {
             gravity = Gravity.CENTER_VERTICAL or Gravity.END
             x = 0
             y = 0
+        }
+
+        // True sliding and tapping gesture recognition
+        var initialY = 0f
+        var isDragging = false
+
+        edgeTriggerBar.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialY = event.rawY
+                    isDragging = false
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaY = event.rawY - initialY
+                    if (Math.abs(deltaY) > 25) {
+                        isDragging = true
+                        if (!isMenuVisible) {
+                            toggleSlideMenu(layoutFlag)
+                        }
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (!isDragging) {
+                        toggleSlideMenu(layoutFlag)
+                    }
+                    true
+                }
+                else -> false
+            }
         }
 
         try {
@@ -76,31 +104,30 @@ class FloatingEdgeService : Service() {
             val isDecoyEnabled = prefs.getBoolean("decoy_mode_enabled", true)
             val isFakeCallEnabled = prefs.getBoolean("fake_call_enabled", true)
 
-            // Create a gorgeous, premium floating action tray with rounded dark glassmorphism
             val menuLayout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
-                    setColor(Color.parseColor("#F50F172A")) // Rich dark slate background
+                    setColor(Color.parseColor("#F50F172A"))
                     cornerRadius = 24f
-                    setStroke(2, Color.parseColor("#334155")) // Subtle clean border
+                    setStroke(2, Color.parseColor("#334155"))
                 }
                 setPadding(16, 20, 16, 20)
                 gravity = Gravity.CENTER
 
-                // Decoy Option Button (Elite Styling)
+                // Decoy Option Button
                 if (isDecoyEnabled) {
                     val decoyContainer = LinearLayout(serviceContext).apply {
                         gravity = Gravity.CENTER
                         background = GradientDrawable().apply {
                             shape = GradientDrawable.OVAL
-                            setColor(Color.parseColor("#1E293B")) // Sleek button circle background
+                            setColor(Color.parseColor("#1E293B"))
                         }
                         setPadding(22, 22, 22, 22)
 
                         val decoyIcon = ImageView(serviceContext).apply {
                             setImageResource(android.R.drawable.ic_secure)
-                            setColorFilter(Color.parseColor("#38BDF8")) // Bright sky blue accent
+                            setColorFilter(Color.parseColor("#38BDF8"))
                         }
                         addView(decoyIcon, LinearLayout.LayoutParams(64, 64))
 
@@ -112,7 +139,7 @@ class FloatingEdgeService : Service() {
                     addView(decoyContainer, LinearLayout.LayoutParams(100, 100).apply { setMargins(0, 0, 0, 16) })
                 }
 
-                // Fake Call Option Button (Elite Styling)
+                // Fake Call Option Button
                 if (isFakeCallEnabled) {
                     val callContainer = LinearLayout(serviceContext).apply {
                         gravity = Gravity.CENTER
@@ -124,7 +151,7 @@ class FloatingEdgeService : Service() {
 
                         val callIcon = ImageView(serviceContext).apply {
                             setImageResource(android.R.drawable.ic_menu_call)
-                            setColorFilter(Color.parseColor("#4ADE80")) // Bright vibrant green accent
+                            setColorFilter(Color.parseColor("#4ADE80"))
                         }
                         addView(callIcon, LinearLayout.LayoutParams(64, 64))
 
@@ -177,12 +204,11 @@ class FloatingEdgeService : Service() {
         if (floatingDecoyIcon != null) return
         val serviceContext = this
 
-        // Floating movable panic icon with gorgeous rounded styling
         val iconView = LinearLayout(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#CC2563EB")) // Professional high-visibility floating blue
-                setStroke(3, Color.WHITE) // Crisp white outer border
+                setColor(Color.parseColor("#CC2563EB"))
+                setStroke(3, Color.WHITE)
             }
             setPadding(24, 24, 24, 24)
             gravity = Gravity.CENTER
@@ -197,6 +223,7 @@ class FloatingEdgeService : Service() {
         val iconParams = WindowManager.LayoutParams(
             130, 130,
             layoutFlag,
+            // FLAG_NOT_FOCUSABLE removed from layout flags during drag or handled smoothly
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
