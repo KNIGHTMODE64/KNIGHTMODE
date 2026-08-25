@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -53,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
         val sharedPrefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
         
-        // Check if Decoy Stealth Disguise mode is turned ON
+        // Check if Decoy Stealth Disguise mode is turned ON at launch
         val isDecoyEnabled = sharedPrefs.getBoolean("decoy_mode_enabled", false)
         if (isDecoyEnabled) {
             val intent = Intent(this, DecoyActivity::class.java).apply {
@@ -79,6 +80,9 @@ class MainActivity : ComponentActivity() {
             }
             var isDecoyModeEnabled by remember {
                 mutableStateOf(sharedPrefs.getBoolean("decoy_mode_enabled", false))
+            }
+            var isFakeCallEnabled by remember {
+                mutableStateOf(sharedPrefs.getBoolean("fake_call_enabled", true))
             }
 
             var isServiceRunning by remember {
@@ -185,7 +189,7 @@ class MainActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Decoy Disguise Mode Switch Toggle Row with Visual Icon
+                    // Decoy Disguise Mode Switch Toggle Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -206,6 +210,33 @@ class MainActivity : ComponentActivity() {
                             onCheckedChange = { enabled ->
                                 isDecoyModeEnabled = enabled
                                 sharedPrefs.edit().putBoolean("decoy_mode_enabled", enabled).apply()
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Fake Call Feature Enable/Disable Switch Toggle Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Call,
+                                contentDescription = "Fake Call Icon",
+                                tint = Color(0xFF4ADE80),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(text = "Enable Fake Call in Slide", color = Color.White, fontSize = 16.sp)
+                        }
+                        Switch(
+                            checked = isFakeCallEnabled,
+                            onCheckedChange = { enabled ->
+                                isFakeCallEnabled = enabled
+                                sharedPrefs.edit().putBoolean("fake_call_enabled", enabled).apply()
                             }
                         )
                     }
@@ -254,7 +285,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Register the screen-off listener dynamically
         registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
     }
 
@@ -268,7 +298,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun triggerPanicPurge() {
-        // Launch the decoy interface and clear task stack instantly on power button press
         val intent = Intent(this, DecoyActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
