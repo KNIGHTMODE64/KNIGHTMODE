@@ -5,17 +5,17 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     
-    <!-- NEW: Android 14 requires explicit foreground service types -->
+    <!-- Android 14 requires explicit foreground service types -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
-        android:label="GuardOfKnight"
+        android:label="Quick Notes"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
-        <!-- Main App Screen -->
+        <!-- Main App Screen (Routs to Decoy if Enabled) -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -32,7 +32,7 @@
             android:showOnLockScreen="true"
             android:turnScreenOn="true" />
 
-        <!-- NEW: Decoy Notes/Utility Screen for Panic Purge -->
+        <!-- Decoy Notes/Utility Screen for Panic Purge -->
         <activity
             android:name=".DecoyActivity"
             android:exported="false" />
