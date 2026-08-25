@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
@@ -36,16 +37,20 @@ class FloatingEdgeService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // 1. Permanent, reliable Edge Handle on the right side
+        // 1. Sleek, refined Edge Handle on the right side
         edgeTriggerBar = View(this).apply {
-            setBackgroundColor(Color.parseColor("#663B82F6")) // Visible vibrant edge tab
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.parseColor("#803B82F6")) // Semi-transparent vibrant blue tab
+                cornerRadius = 12f
+            }
             setOnClickListener {
                 toggleSlideMenu(layoutFlag)
             }
         }
 
         val edgeParams = WindowManager.LayoutParams(
-            40, 220,
+            35, 200,
             layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
@@ -69,36 +74,60 @@ class FloatingEdgeService : Service() {
             val serviceContext = this
             val prefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
             val isDecoyEnabled = prefs.getBoolean("decoy_mode_enabled", true)
-            val isFakeCallEnabled = prefs.getBoolean("fake_call_enabled", true) // Checks fake call toggle
+            val isFakeCallEnabled = prefs.getBoolean("fake_call_enabled", true)
 
+            // Create a gorgeous, premium floating action tray with rounded dark glassmorphism
             val menuLayout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setBackgroundColor(Color.parseColor("#F20F172A"))
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(Color.parseColor("#F50F172A")) // Rich dark slate background
+                    cornerRadius = 24f
+                    setStroke(2, Color.parseColor("#334155")) // Subtle clean border
+                }
                 setPadding(16, 20, 16, 20)
                 gravity = Gravity.CENTER
 
-                // Decoy Option
+                // Decoy Option Button (Elite Styling)
                 if (isDecoyEnabled) {
-                    val decoyBtn = ImageView(serviceContext).apply {
-                        setImageResource(android.R.drawable.ic_secure)
-                        setColorFilter(Color.parseColor("#38BDF8"))
-                        setPadding(14, 14, 14, 14)
-                        setBackgroundColor(Color.parseColor("#441E293B"))
+                    val decoyContainer = LinearLayout(serviceContext).apply {
+                        gravity = Gravity.CENTER
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            setColor(Color.parseColor("#1E293B")) // Sleek button circle background
+                        }
+                        setPadding(22, 22, 22, 22)
+
+                        val decoyIcon = ImageView(serviceContext).apply {
+                            setImageResource(android.R.drawable.ic_secure)
+                            setColorFilter(Color.parseColor("#38BDF8")) // Bright sky blue accent
+                        }
+                        addView(decoyIcon, LinearLayout.LayoutParams(64, 64))
+
                         setOnClickListener {
                             closeSlideMenu()
                             spawnMovableDecoyIcon(layoutFlag)
                         }
                     }
-                    addView(decoyBtn, LinearLayout.LayoutParams(110, 110).apply { setMargins(0, 0, 0, 16) })
+                    addView(decoyContainer, LinearLayout.LayoutParams(100, 100).apply { setMargins(0, 0, 0, 16) })
                 }
 
-                // Fake Call Option (Only shows if enabled in your app dashboard)
+                // Fake Call Option Button (Elite Styling)
                 if (isFakeCallEnabled) {
-                    val callBtn = ImageView(serviceContext).apply {
-                        setImageResource(android.R.drawable.ic_menu_call)
-                        setColorFilter(Color.parseColor("#4ADE80"))
-                        setPadding(14, 14, 14, 14)
-                        setBackgroundColor(Color.parseColor("#441E293B"))
+                    val callContainer = LinearLayout(serviceContext).apply {
+                        gravity = Gravity.CENTER
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            setColor(Color.parseColor("#1E293B"))
+                        }
+                        setPadding(22, 22, 22, 22)
+
+                        val callIcon = ImageView(serviceContext).apply {
+                            setImageResource(android.R.drawable.ic_menu_call)
+                            setColorFilter(Color.parseColor("#4ADE80")) // Bright vibrant green accent
+                        }
+                        addView(callIcon, LinearLayout.LayoutParams(64, 64))
+
                         setOnClickListener {
                             closeSlideMenu()
                             val intent = Intent(serviceContext, FakeCallActivity::class.java).apply {
@@ -107,19 +136,19 @@ class FloatingEdgeService : Service() {
                             serviceContext.startActivity(intent)
                         }
                     }
-                    addView(callBtn, LinearLayout.LayoutParams(110, 110))
+                    addView(callContainer, LinearLayout.LayoutParams(100, 100))
                 }
             }
 
             val menuParams = WindowManager.LayoutParams(
-                150,
+                140,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutFlag,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
-                x = 35
+                x = 24
                 y = 0
             }
 
@@ -148,9 +177,14 @@ class FloatingEdgeService : Service() {
         if (floatingDecoyIcon != null) return
         val serviceContext = this
 
+        // Floating movable panic icon with gorgeous rounded styling
         val iconView = LinearLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#AA2563EB"))
-            setPadding(20, 20, 20, 20)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#CC2563EB")) // Professional high-visibility floating blue
+                setStroke(3, Color.WHITE) // Crisp white outer border
+            }
+            setPadding(24, 24, 24, 24)
             gravity = Gravity.CENTER
 
             val innerIcon = ImageView(serviceContext).apply {
@@ -161,9 +195,8 @@ class FloatingEdgeService : Service() {
         }
 
         val iconParams = WindowManager.LayoutParams(
-            120, 120,
+            130, 130,
             layoutFlag,
-            // FLAG_NOT_FOCUSABLE is required for touch dragging to work smoothly without crashing
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
@@ -205,7 +238,6 @@ class FloatingEdgeService : Service() {
                     }
                     MotionEvent.ACTION_UP -> {
                         if (!isMoved) {
-                            // If tapped without moving, trigger the Decoy Activity
                             val intent = Intent(serviceContext, DecoyActivity::class.java).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             }
@@ -218,7 +250,6 @@ class FloatingEdgeService : Service() {
             }
         })
 
-        // Long press to dismiss the floating icon back into the slide menu tray
         iconView.setOnLongClickListener {
             try {
                 windowManager.removeView(iconView)
