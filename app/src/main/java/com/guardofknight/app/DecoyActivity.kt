@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,44 +20,60 @@ class DecoyActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         setContent {
+            val context = this
+            val prefs = context.getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
+            var noteText by remember { mutableStateOf(prefs.getSharedPreferences("decoy_note_content", Context.MODE_PRIVATE)?.getString("saved_note", "") ?: "") }
+
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = Color(0xFF121212)
+                color = Color(0xFF1E1E1E)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    // Standard Decoy Notes View Content
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "Quick Notes", fontSize = 28.sp, color = Color.White)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(text = "No notes available.", fontSize = 14.sp, color = Color.Gray)
+                        // Title bar for the decoy notes app
+                        Spacer(modifier = Modifier.height(30.dp))
+                        Text(text = "Quick Notes", fontSize = 26.sp, color = Color.White)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Fully functional text input field so users can type notes
+                        OutlinedTextField(
+                            value = noteText,
+                            onValueChange = { 
+                                noteText = it
+                                prefs.edit().putString("saved_note", it).apply()
+                            },
+                            placeholder = { Text("Type your notes here...", color = Color.Gray) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color(0xFF3B82F6),
+                                unfocusedBorderColor = Color.DarkGray
+                            )
+                        )
                     }
 
-                    // DISCREET BACKDOOR / SKIP BUTTON: 
-                    // Placing a tiny, invisible or subtle button at the bottom-right corner 
-                    // lets you jump back to your real app dashboard to change options anytime!
+                    // Discreet settings backdoor button at the bottom right to return to your real app features
                     TextButton(
                         onClick = {
-                            // Temporarily clear the decoy lock or jump back to MainActivity with a bypass extra
-                            val prefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
-                            prefs.edit().putBoolean("decoy_mode_enabled", false).apply() // Turns off decoy so you can access settings
-
-                            val intent = Intent(this@DecoyActivity, MainActivity::class.java).apply {
+                            val intent = Intent(context, MainActivity::class.java).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             }
-                            startActivity(intent)
+                            context.startActivity(intent)
                             finish()
                         },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(16.dp)
                     ) {
-                        Text(text = "⚙️", fontSize = 18.sp) // Tiny settings icon hidden in plain sight
+                        Text(text = "⚙️", fontSize = 20.sp)
                     }
                 }
             }
