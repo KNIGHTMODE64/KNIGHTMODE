@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +21,8 @@ class DecoyActivity : ComponentActivity() {
         setContent {
             val context = this
             val prefs = context.getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
-            var noteText by remember { mutableStateOf(prefs.getSharedPreferences("decoy_note_content", Context.MODE_PRIVATE)?.getString("saved_note", "") ?: "") }
+            val notePrefs = context.getSharedPreferences("decoy_note_content", Context.MODE_PRIVATE)
+            var noteText by remember { mutableStateOf(notePrefs.getString("saved_note", "") ?: "") }
 
             Surface(
                 modifier = Modifier.fillMaxSize(),
@@ -35,17 +35,16 @@ class DecoyActivity : ComponentActivity() {
                             .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Title bar for the decoy notes app
                         Spacer(modifier = Modifier.height(30.dp))
                         Text(text = "Quick Notes", fontSize = 26.sp, color = Color.White)
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Fully functional text input field so users can type notes
+                        // Fully functional text input field for notes
                         OutlinedTextField(
                             value = noteText,
                             onValueChange = { 
                                 noteText = it
-                                prefs.edit().putString("saved_note", it).apply()
+                                notePrefs.edit().putString("saved_note", it).apply()
                             },
                             placeholder = { Text("Type your notes here...", color = Color.Gray) },
                             modifier = Modifier
@@ -60,7 +59,7 @@ class DecoyActivity : ComponentActivity() {
                         )
                     }
 
-                    // Discreet settings backdoor button at the bottom right to return to your real app features
+                    // Discreet settings backdoor button to return to your real app dashboard
                     TextButton(
                         onClick = {
                             val intent = Intent(context, MainActivity::class.java).apply {
