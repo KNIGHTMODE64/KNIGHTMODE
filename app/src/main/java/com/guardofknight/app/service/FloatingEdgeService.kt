@@ -36,13 +36,16 @@ class FloatingEdgeService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // 1. Sleek Edge Trigger Handle on the right side
+        // 1. Permanent, reliable Edge Handle on the right side
         edgeTriggerBar = View(this).apply {
-            setBackgroundColor(Color.parseColor("#553B82F6")) // Modern glowing blue tab
+            setBackgroundColor(Color.parseColor("#663B82F6")) // Visible vibrant edge tab
+            setOnClickListener {
+                toggleSlideMenu(layoutFlag)
+            }
         }
 
         val edgeParams = WindowManager.LayoutParams(
-            35, 250,
+            40, 220,
             layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
@@ -50,38 +53,6 @@ class FloatingEdgeService : Service() {
             gravity = Gravity.CENTER_VERTICAL or Gravity.END
             x = 0
             y = 0
-        }
-
-        // Add true slide/swipe gesture recognition to pull out the menu
-        var initialY = 0f
-        var isDragging = false
-
-        edgeTriggerBar.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialY = event.rawY
-                    isDragging = false
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val deltaY = event.rawY - initialY
-                    if (Math.abs(deltaY) > 30) { // If user slides up/down or pulls inward
-                        isDragging = true
-                        if (!isMenuVisible) {
-                            toggleSlideMenu(layoutFlag)
-                        }
-                    }
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
-                        // Regular tap also toggles it if they didn't slide
-                        toggleSlideMenu(layoutFlag)
-                    }
-                    true
-                }
-                else -> false
-            }
         }
 
         try {
@@ -98,37 +69,36 @@ class FloatingEdgeService : Service() {
             val serviceContext = this
             val prefs = getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
             val isDecoyEnabled = prefs.getBoolean("decoy_mode_enabled", true)
-            val isFakeCallEnabled = prefs.getBoolean("fake_call_service_enabled", true)
+            val isFakeCallEnabled = prefs.getBoolean("fake_call_enabled", true) // Checks fake call toggle
 
-            // Create a gorgeous, modern floating action tray
             val menuLayout = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setBackgroundColor(Color.parseColor("#E60F172A")) // Premium dark glassmorphism style
-                setPadding(16, 24, 16, 24)
+                setBackgroundColor(Color.parseColor("#F20F172A"))
+                setPadding(16, 20, 16, 20)
                 gravity = Gravity.CENTER
 
-                // Decoy Trigger Option
+                // Decoy Option
                 if (isDecoyEnabled) {
                     val decoyBtn = ImageView(serviceContext).apply {
-                        setImageResource(android.R.drawable.ic_secure) // Security shield/lock icon
-                        setColorFilter(Color.parseColor("#38BDF8")) // Bright sky blue accent
-                        setPadding(16, 16, 16, 16)
-                        setBackgroundColor(Color.parseColor("#331E293B"))
+                        setImageResource(android.R.drawable.ic_secure)
+                        setColorFilter(Color.parseColor("#38BDF8"))
+                        setPadding(14, 14, 14, 14)
+                        setBackgroundColor(Color.parseColor("#441E293B"))
                         setOnClickListener {
                             closeSlideMenu()
                             spawnMovableDecoyIcon(layoutFlag)
                         }
                     }
-                    addView(decoyBtn, LinearLayout.LayoutParams(110, 110).apply { setMargins(0, 0, 0, 20) })
+                    addView(decoyBtn, LinearLayout.LayoutParams(110, 110).apply { setMargins(0, 0, 0, 16) })
                 }
 
-                // Fake Call Trigger Option
+                // Fake Call Option (Only shows if enabled in your app dashboard)
                 if (isFakeCallEnabled) {
                     val callBtn = ImageView(serviceContext).apply {
-                        setImageResource(android.R.drawable.ic_menu_call) // Phone call icon
-                        setColorFilter(Color.parseColor("#4ADE80")) // Bright green accent
-                        setPadding(16, 16, 16, 16)
-                        setBackgroundColor(Color.parseColor("#331E293B"))
+                        setImageResource(android.R.drawable.ic_menu_call)
+                        setColorFilter(Color.parseColor("#4ADE80"))
+                        setPadding(14, 14, 14, 14)
+                        setBackgroundColor(Color.parseColor("#441E293B"))
                         setOnClickListener {
                             closeSlideMenu()
                             val intent = Intent(serviceContext, FakeCallActivity::class.java).apply {
@@ -149,7 +119,7 @@ class FloatingEdgeService : Service() {
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
-                x = 30
+                x = 35
                 y = 0
             }
 
@@ -178,22 +148,22 @@ class FloatingEdgeService : Service() {
         if (floatingDecoyIcon != null) return
         val serviceContext = this
 
-        // Floating movable panic icon
         val iconView = LinearLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#992563EB")) // Semi-transparent professional blue
-            setPadding(24, 24, 24, 24)
+            setBackgroundColor(Color.parseColor("#AA2563EB"))
+            setPadding(20, 20, 20, 20)
             gravity = Gravity.CENTER
 
             val innerIcon = ImageView(serviceContext).apply {
                 setImageResource(android.R.drawable.ic_secure)
                 setColorFilter(Color.WHITE)
             }
-            addView(innerIcon, LinearLayout.LayoutParams(80, 80))
+            addView(innerIcon, LinearLayout.LayoutParams(70, 70))
         }
 
         val iconParams = WindowManager.LayoutParams(
-            130, 130,
+            120, 120,
             layoutFlag,
+            // FLAG_NOT_FOCUSABLE is required for touch dragging to work smoothly without crashing
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
@@ -217,7 +187,7 @@ class FloatingEdgeService : Service() {
                         initialTouchX = event.rawX
                         initialTouchY = event.rawY
                         isMoved = false
-                        return false
+                        return true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         val dx = (event.rawX - initialTouchX).toInt()
@@ -233,22 +203,22 @@ class FloatingEdgeService : Service() {
                         }
                         return true
                     }
+                    MotionEvent.ACTION_UP -> {
+                        if (!isMoved) {
+                            // If tapped without moving, trigger the Decoy Activity
+                            val intent = Intent(serviceContext, DecoyActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                            serviceContext.startActivity(intent)
+                        }
+                        return true
+                    }
                     else -> return false
                 }
             }
         })
 
-        // Tap normally to trigger the Decoy Activity
-        iconView.setOnClickListener {
-            if (!isMoved) {
-                val intent = Intent(serviceContext, DecoyActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-                serviceContext.startActivity(intent)
-            }
-        }
-
-        // Long press to dismiss the floating icon back into the slide menu
+        // Long press to dismiss the floating icon back into the slide menu tray
         iconView.setOnLongClickListener {
             try {
                 windowManager.removeView(iconView)
