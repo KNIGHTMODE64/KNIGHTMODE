@@ -41,8 +41,8 @@ class FloatingEdgeService : Service() {
         }
 
         val edgeParams = WindowManager.LayoutParams(
-            30,
-            200,
+            30, // Thin width
+            200, // Height of the slide bar
             layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -62,6 +62,7 @@ class FloatingEdgeService : Service() {
 
     private fun toggleFloatingIcon(layoutFlag: Int) {
         if (isIconVisible) {
+            // If the icon is already showing, tapping the edge bar again makes it DISAPPEAR
             floatingPanicIcon?.let {
                 try {
                     windowManager.removeView(it)
@@ -72,20 +73,20 @@ class FloatingEdgeService : Service() {
             floatingPanicIcon = null
             isIconVisible = false
         } else {
-            // Create a styled floating panic button layout containing an image icon
+            // If hidden, tapping the edge bar PLACES THE ICON OUTSIDE on the screen
             val iconContainer = LinearLayout(this).apply {
                 setBackgroundColor(Color.parseColor("#CC1E293B")) // Sleek dark slate background
                 setPadding(24, 24, 24, 24)
                 gravity = Gravity.CENTER
                 
-                // Add a visible inner icon so it doesn't look like an empty box
+                // Add a visible inner icon so it looks clean and professional
                 val iconView = ImageView(context).apply {
-                    setImageResource(android.R.drawable.ic_menu_edit) // Clean built-in notepad/edit icon
+                    setImageResource(android.R.drawable.ic_menu_edit) // Notepad/edit icon representing quick notes
                     setColorFilter(Color.WHITE)
                 }
                 addView(iconView, LinearLayout.LayoutParams(70, 70))
 
-                // Clicking the floating icon triggers the Decoy Notes page instantly!
+                // Clicking this floating icon instantly triggers the Decoy Notes page!
                 setOnClickListener {
                     val intent = Intent(context, DecoyActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -95,16 +96,16 @@ class FloatingEdgeService : Service() {
             }
 
             val iconParams = WindowManager.LayoutParams(
-                130,
-                130,
+                130, // Width of the floating icon button
+                130, // Height of the floating icon button
                 layoutFlag,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
-                x = 180
-                y = 0
+                x = 180 // Pushes it inward from the right edge so it's easy to tap
+                y = 0   // Centered vertically
             }
 
             try {
