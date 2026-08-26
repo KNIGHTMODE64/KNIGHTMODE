@@ -62,11 +62,7 @@ class DecoyActivity : ComponentActivity() {
                     // Discreet settings backdoor button to return to your real app dashboard
                     TextButton(
                         onClick = {
-                            val intent = Intent(context, MainActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            }
-                            context.startActivity(intent)
-                            finish()
+                            navigateToMain()
                         },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
@@ -77,5 +73,20 @@ class DecoyActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // Override the physical/gesture back button so it successfully returns to MainActivity
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        super.onBackPressed()
+        navigateToMain()
+    }
+
+    private fun navigateToMain() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
     }
 }
