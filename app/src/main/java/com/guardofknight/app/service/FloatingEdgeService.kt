@@ -38,11 +38,8 @@ class FloatingEdgeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // MUST call startForeground immediately to avoid Android RemoteServiceException crash
         startForeground(1, createPersistentNotification())
-
         setupEdgeTriggerBar()
-
         return START_STICKY
     }
 
@@ -69,7 +66,6 @@ class FloatingEdgeService : Service() {
     }
 
     private fun setupEdgeTriggerBar() {
-        // Prevent re-adding if already initialized
         if (::edgeTriggerBar.isInitialized && edgeTriggerBar.parent != null) return
 
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -109,7 +105,7 @@ class FloatingEdgeService : Service() {
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val deltaY = event.rawY - initialY
-                    if (Math.abs(deltaY) > 25) {
+                    if (Math.abs(deltaY) > 20) {
                         isDragging = true
                         if (!isMenuVisible) {
                             toggleSlideMenu(layoutFlag)
@@ -154,7 +150,6 @@ class FloatingEdgeService : Service() {
                 setPadding(16, 20, 16, 20)
                 gravity = Gravity.CENTER
 
-                // Decoy Option Button
                 if (isDecoyEnabled) {
                     val decoyContainer = LinearLayout(serviceContext).apply {
                         gravity = Gravity.CENTER
@@ -178,7 +173,6 @@ class FloatingEdgeService : Service() {
                     addView(decoyContainer, LinearLayout.LayoutParams(100, 100).apply { setMargins(0, 0, 0, 16) })
                 }
 
-                // Fake Call Option Button
                 if (isFakeCallEnabled) {
                     val callContainer = LinearLayout(serviceContext).apply {
                         gravity = Gravity.CENTER
@@ -276,45 +270,52 @@ class FloatingEdgeService : Service() {
         var initialTouchY = 0f
         var isMoved = false
 
-        iconView.setOnTouchListener(object : View.OnTouchListener {
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialX = iconParams.x
-                        initialY = iconParams.y
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        isMoved = false
-                        return true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val dx = (event.rawX - initialTouchX).toInt()
-                        val dy = (event.rawY - initialTouchY).toInt()
-                        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-                            isMoved = true
-                        }
+        // Fix: Use performClick() to satisfy accessibility warnings and delegate touch properly
+        iconView.setOnClickListener {
+            if (!isMoved) {
+                val intent = Intent(serviceContext, DecoyActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                serviceContext.startActivity(intent)
+            }
+        }
+
+        iconView.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = iconParams.x
+                    initialY = iconParams.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    isMoved = false
+                    false // Let touch propagate so long-clicks and clicks work seamlessly
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (event.rawX - initialTouchX).toInt()
+                    val dy = (event.rawY - initialTouchY).toInt()
+                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                        isMoved = true
                         iconParams.x = initialX + dx
                         iconParams.y = initialY + dy
                         try {
                             windowManager.updateViewLayout(iconView, iconParams)
                         } catch (e: Exception) {
                         }
-                        return true
                     }
-                    MotionEvent.ACTION_UP -> {
-                        if (!isMoved) {
-                            val intent = Intent(serviceContext, DecoyActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            }
-                            serviceContext.startActivity(intent)
-                        }
-                        return true
-                    }
-                    else -> return false
+                    true
                 }
+                MotionEvent.ACTION_UP -> {
+                    if (isMoved) {
+                        true
+                    } else {
+                        false // Let click listener handle standard taps
+                    }
+                }
+                else -> false
             }
-        })
+        }
 
+        // Long click will now properly fire to remove the floating icon
         iconView.setOnLongClickListener {
             try {
                 windowManager.removeView(iconView)
