@@ -6,7 +6,9 @@ import android.os.Bundle
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -14,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,14 +28,18 @@ class DecoyActivity : ComponentActivity() {
         setContent {
             val context = this
             val focusManager = LocalFocusManager.current
+            val prefs = context.getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
             val notePrefs = context.getSharedPreferences("decoy_note_content", Context.MODE_PRIVATE)
             var noteText by remember { mutableStateOf(notePrefs.getString("saved_note", "") ?: "") }
+
+            // State to manage whether your slide bar/panel is currently open
+            var isSlideBarOpen by remember { mutableStateOf(true) }
 
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 color = Color(0xFF1E1E1E)
             ) {
-                // Root Box with a click listener to dismiss the keyboard / close panels on screen tap
+                // Root Box: Tapping screen clears focus / closes slide bar if open
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -41,6 +48,9 @@ class DecoyActivity : ComponentActivity() {
                             interactionSource = remember { MutableInteractionSource() }
                         ) {
                             focusManager.clearFocus()
+                            if (isSlideBarOpen) {
+                                isSlideBarOpen = false
+                            }
                         }
                 ) {
                     Column(
@@ -59,8 +69,11 @@ class DecoyActivity : ComponentActivity() {
                         ) {
                             Text(text = "Quick Notes", fontSize = 26.sp, color = Color.White)
                             
-                            // Explicit Skip button to successfully close/bypass the decoy screen
-                            TextButton(onClick = { navigateToMain() }) {
+                            // Skip button: Bypasses decoy permanently and goes to main
+                            TextButton(onClick = { 
+                                prefs.edit().putBoolean("decoy_skipped_permanently", true).apply()
+                                navigateToMain() 
+                            }) {
                                 Text(text = "Skip", fontSize = 16.sp, color = Color(0xFF3B82F6))
                             }
                         }
@@ -85,6 +98,26 @@ class DecoyActivity : ComponentActivity() {
                                 unfocusedBorderColor = Color.DarkGray
                             )
                         )
+                    }
+
+                    // Decoy Icon / Trigger element with Touch & Hold (Long Press) detection to close decoy
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(16.dp)
+                            .size(48.dp)
+                            .background(Color.DarkGray, shape = MaterialTheme.shapes.small)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = {
+                                        // Touch and hold the decoy icon closes the decoy screen
+                                        navigateToMain()
+                                    }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "🛡️", fontSize = 20.sp)
                     }
 
                     // Discreet settings backdoor button to return to your real app dashboard
