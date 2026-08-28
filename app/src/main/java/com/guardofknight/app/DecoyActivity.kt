@@ -3,14 +3,18 @@ package com.guardofknight.app
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -20,7 +24,7 @@ class DecoyActivity : ComponentActivity() {
         
         setContent {
             val context = this
-            val prefs = context.getSharedPreferences("GuardPrefs", Context.MODE_PRIVATE)
+            val focusManager = LocalFocusManager.current
             val notePrefs = context.getSharedPreferences("decoy_note_content", Context.MODE_PRIVATE)
             var noteText by remember { mutableStateOf(notePrefs.getString("saved_note", "") ?: "") }
 
@@ -28,7 +32,17 @@ class DecoyActivity : ComponentActivity() {
                 modifier = Modifier.fillMaxSize(),
                 color = Color(0xFF1E1E1E)
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
+                // Root Box with a click listener to dismiss the keyboard / close panels on screen tap
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            focusManager.clearFocus()
+                        }
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -92,11 +106,16 @@ class DecoyActivity : ComponentActivity() {
     // Override the physical/gesture back button so it successfully returns to MainActivity
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        super.onBackPressed()
         navigateToMain()
     }
 
     private fun navigateToMain() {
+        // Hide the soft keyboard cleanly before switching tasks
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        currentFocus?.windowToken?.let { token ->
+            imm.hideSoftInputFromWindow(token, 0)
+        }
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
