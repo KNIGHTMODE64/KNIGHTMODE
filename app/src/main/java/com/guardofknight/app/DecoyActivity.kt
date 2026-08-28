@@ -36,7 +36,21 @@ class DecoyActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(modifier = Modifier.height(30.dp))
-                        Text(text = "Quick Notes", fontSize = 26.sp, color = Color.White)
+                        
+                        // Header Row with Title and Skip Button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "Quick Notes", fontSize = 26.sp, color = Color.White)
+                            
+                            // Explicit Skip button to successfully close/bypass the decoy screen
+                            TextButton(onClick = { navigateToMain() }) {
+                                Text(text = "Skip", fontSize = 16.sp, color = Color(0xFF3B82F6))
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Fully functional text input field for notes
